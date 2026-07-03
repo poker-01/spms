@@ -1,0 +1,35 @@
+### IDE ###
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+
+### OS ###
+.DS_Store
+Thumbs.db
+desktop.ini
+
+### Java / Maven ###
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/wrapper/maven-wrapper.jar
+
+### Node ###
+node_modules/
+dist/
+coverage/
+*.local
+.eslintcache
+
+### Logs ###
+*.log
+
+### Environment / Secrets ###
+*.env.local
+.env.*.local
+application-local.yaml
+application-local.properties

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.spms.mapper.SysPermissionInfoMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.spms.model.po.SysPermissionInfo">
+            <id property="id" column="id" />
+            <result property="parentId" column="parent_id" />
+            <result property="permissionCode" column="permission_code" />
+            <result property="permissionName" column="permission_name" />
+            <result property="permissionType" column="permission_type" />
+            <result property="permissionIcon" column="permission_icon" />
+            <result property="permissionPath" column="permission_path" />
+            <result property="permissionComponent" column="permission_component" />
+            <result property="permissionStr" column="permission_str" />
+            <result property="sortOrder" column="sort_order" />
+            <result property="visible" column="visible" />
+            <result property="isDeleted" column="is_deleted" />
+            <result property="version" column="version" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+            <result property="createUser" column="create_user" />
+            <result property="updateUser" column="update_user" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,parent_id,permission_code,permission_name,permission_type,permission_icon,
+        permission_path,permission_component,permission_str,sort_order,visible,
+        is_deleted,version,create_time,update_time,create_user,
+        update_user
+    </sql>
+</mapper>

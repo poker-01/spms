@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.spms.mapper.SysUserInfoMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.spms.model.po.SysUserInfo">
+            <id property="id" column="id" />
+            <result property="userName" column="user_name" />
+            <result property="password" column="password" />
+            <result property="fullName" column="full_name" />
+            <result property="phoneNumber" column="phone_number" />
+            <result property="email" column="email" />
+            <result property="avatarAddress" column="avatar_address" />
+            <result property="status" column="status" />
+            <result property="isDeleted" column="is_deleted" />
+            <result property="version" column="version" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+            <result property="createUser" column="create_user" />
+            <result property="updateUser" column="update_user" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,user_name,password,full_name,phone_number,email,
+        avatar_address,status,is_deleted,version,create_time,
+        update_time,create_user,update_user
+    </sql>
+
+    <select id="selectByUserName" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_user_info
+        WHERE user_name = #{userName} AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectRoleCodesByUserId" resultType="java.lang.String">
+        SELECT r.role_code
+        FROM sys_user_role ur
+        INNER JOIN sys_role_info r ON ur.role_info_id = r.id
+        WHERE ur.user_info_id = #{userId}
+          AND ur.is_deleted = 0
+          AND r.is_deleted = 0
+    </select>
+
+    <select id="selectPermissionStrsByUserId" resultType="java.lang.String">
+        SELECT DISTINCT p.permission_str
+        FROM sys_user_role ur
+        INNER JOIN sys_role_permission rp ON ur.role_info_id = rp.role_info_id
+        INNER JOIN sys_permission_info p ON rp.permission_info_id = p.id
+        WHERE ur.user_info_id = #{userId}
+          AND ur.is_deleted = 0
+          AND rp.is_deleted = 0
+          AND p.is_deleted = 0
+          AND p.permission_str IS NOT NULL
+          AND p.permission_str != ''
+    </select>
+
+    <select id="selectPermissionsByUserId" resultType="com.example.spms.model.po.SysPermissionInfo">
+        SELECT DISTINCT p.*
+        FROM sys_user_role ur
+        INNER JOIN sys_role_permission rp ON ur.role_info_id = rp.role_info_id
+        INNER JOIN sys_permission_info p ON rp.permission_info_id = p.id
+        WHERE ur.user_info_id = #{userId}
+          AND ur.is_deleted = 0
+          AND rp.is_deleted = 0
+          AND p.is_deleted = 0
+        ORDER BY p.sort_order ASC, p.id ASC
+    </select>
+</mapper>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.spms.mapper.ComplaintSuggestionMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.spms.model.po.ComplaintSuggestion">
+            <id property="id" column="id" />
+            <result property="complaintNo" column="complaint_no" />
+            <result property="houseId" column="house_id" />
+            <result property="ownerId" column="owner_id" />
+            <result property="type" column="type" />
+            <result property="title" column="title" />
+            <result property="content" column="content" />
+            <result property="contactPhone" column="contact_phone" />
+            <result property="status" column="status" />
+            <result property="replyContent" column="reply_content" />
+            <result property="replyTime" column="reply_time" />
+            <result property="isDeleted" column="is_deleted" />
+            <result property="version" column="version" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+            <result property="createUser" column="create_user" />
+            <result property="updateUser" column="update_user" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,complaint_no,house_id,owner_id,type,title,
+        content,contact_phone,status,reply_content,reply_time,
+        is_deleted,version,create_time,update_time,create_user,
+        update_user
+    </sql>
+</mapper>

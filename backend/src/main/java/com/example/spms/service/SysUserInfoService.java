@@ -1,0 +1,35 @@
+package com.example.spms.service;
+
+import com.example.spms.common.Page;
+import com.example.spms.model.bo.UserAssignRoleRequest;
+import com.example.spms.model.bo.UserQueryRequest;
+import com.example.spms.model.bo.UserSaveRequest;
+import com.example.spms.model.bo.UserStatusRequest;
+import com.example.spms.model.bo.UserUpdateRequest;
+import com.example.spms.model.po.SysUserInfo;
+import com.example.spms.model.vo.UserPageVO;
+import com.baomidou.mybatisplus.extension.service.IService;
+
+import java.util.List;
+
+/**
+* @author poker
+* @description 针对表【sys_user_info(用户信息表)】的数据库操作Service
+* @createDate 2026-07-03 15:19:38
+*/
+public interface SysUserInfoService extends IService<SysUserInfo> {
+
+    Page<UserPageVO> pageUsers(UserQueryRequest request);
+
+    void saveUser(UserSaveRequest request);
+
+    void updateUser(UserUpdateRequest request);
+
+    void toggleStatus(UserStatusRequest request);
+
+    void resetPassword(Long userId);
+
+    void assignRoles(UserAssignRoleRequest request);
+
+    List<Long> getUserRoleIds(Long userId);
+}

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.spms.mapper.SysRolePermissionMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.spms.model.po.SysRolePermission">
+            <id property="id" column="id" />
+            <result property="roleInfoId" column="role_info_id" />
+            <result property="permissionInfoId" column="permission_info_id" />
+            <result property="isDeleted" column="is_deleted" />
+            <result property="version" column="version" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+            <result property="createUser" column="create_user" />
+            <result property="updateUser" column="update_user" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,role_info_id,permission_info_id,is_deleted,version,create_time,
+        update_time,create_user,update_user
+    </sql>
+</mapper>

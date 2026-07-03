@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.spms.mapper.OwnerHouseRelMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.spms.model.po.OwnerHouseRel">
+            <id property="id" column="id" />
+            <result property="ownerInfoId" column="owner_info_id" />
+            <result property="houseInfoId" column="house_info_id" />
+            <result property="relationType" column="relation_type" />
+            <result property="isPrimary" column="is_primary" />
+            <result property="moveInDate" column="move_in_date" />
+            <result property="isDeleted" column="is_deleted" />
+            <result property="version" column="version" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+            <result property="createUser" column="create_user" />
+            <result property="updateUser" column="update_user" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,owner_info_id,house_info_id,relation_type,is_primary,move_in_date,
+        is_deleted,version,create_time,update_time,create_user,
+        update_user
+    </sql>
+</mapper>

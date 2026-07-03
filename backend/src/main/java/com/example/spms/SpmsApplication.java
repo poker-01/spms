@@ -1,0 +1,14 @@
+package com.example.spms;
+
+import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SpmsApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpmsApplication.class, args);
+	}
+
+}
