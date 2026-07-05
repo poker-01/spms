@@ -8,8 +8,8 @@ import org.springframework.stereotype.Service;
 
 /**
 * @author poker
-* @description 针对表【community_info(小区信息表)】的数据库操作Service实现
-* @createDate 2026-07-03 15:19:38
+* @description
+* @createDate
 */
 @Service
 public class CommunityInfoServiceImpl extends ServiceImpl<CommunityInfoMapper, CommunityInfo>
