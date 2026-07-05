@@ -1,7 +1,6 @@
 package com.example.spms.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.spms.common.Page;
 import com.example.spms.enums.ComplaintStatus;
@@ -40,7 +39,8 @@ public class ComplaintSuggestionServiceImpl extends ServiceImpl<ComplaintSuggest
 
     @Override
     public Page<ComplaintVO> pageComplaints(ComplaintQueryRequest request) {
-        Page<Map<String, Object>> page = new Page<>(request.getPage(), request.getSize());
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Map<String, Object>> page =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(request.getPage(), request.getSize());
         IPage<Map<String, Object>> result = complaintSuggestionMapper.selectComplaintPage(
                 page,
                 request.getComplaintNo(),

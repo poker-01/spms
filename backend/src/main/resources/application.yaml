@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: spms
+  profiles:
+    active: local
 
   #Jackson 时间格式化
   jackson:
