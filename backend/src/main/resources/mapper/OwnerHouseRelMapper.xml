@@ -5,18 +5,27 @@
 <mapper namespace="com.example.spms.mapper.OwnerHouseRelMapper">
 
     <resultMap id="BaseResultMap" type="com.example.spms.model.po.OwnerHouseRel">
-            <id property="id" column="id" />
-            <result property="ownerInfoId" column="owner_info_id" />
-            <result property="houseInfoId" column="house_info_id" />
-            <result property="relationType" column="relation_type" />
-            <result property="isPrimary" column="is_primary" />
-            <result property="moveInDate" column="move_in_date" />
-            <result property="isDeleted" column="is_deleted" />
-            <result property="version" column="version" />
-            <result property="createTime" column="create_time" />
-            <result property="updateTime" column="update_time" />
-            <result property="createUser" column="create_user" />
-            <result property="updateUser" column="update_user" />
+        <id property="id" column="id" />
+        <result property="ownerInfoId" column="owner_info_id" />
+        <result property="houseInfoId" column="house_info_id" />
+        <result property="relationType" column="relation_type" />
+        <result property="isPrimary" column="is_primary" />
+        <result property="moveInDate" column="move_in_date" />
+        <result property="isDeleted" column="is_deleted" />
+        <result property="version" column="version" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+        <result property="createUser" column="create_user" />
+        <result property="updateUser" column="update_user" />
+    </resultMap>
+
+    <!-- 扩展 ResultMap：带业主和房屋详情 -->
+    <resultMap id="WithDetailResultMap" type="com.example.spms.model.po.OwnerHouseRel" extends="BaseResultMap">
+        <result column="owner_name" property="ownerName" />
+        <result column="owner_phone" property="ownerPhone" />
+        <result column="house_number" property="houseNumber" />
+        <result column="building_name" property="buildingName" />
+        <result column="community_name" property="communityName" />
     </resultMap>
 
     <sql id="Base_Column_List">
@@ -24,4 +33,66 @@
         is_deleted,version,create_time,update_time,create_user,
         update_user
     </sql>
+
+    <!-- 查询业主关联的房屋详情 -->
+    <select id="selectOwnerHouseDetail" resultMap="WithDetailResultMap">
+        SELECT
+        r.id,
+        r.owner_info_id,
+        r.house_info_id,
+        r.relation_type,
+        r.is_primary,
+        r.move_in_date,
+        r.is_deleted,
+        r.version,
+        r.create_time,
+        r.update_time,
+        r.create_user,
+        r.update_user,
+        o.owner_name,
+        o.owner_phone,
+        h.house_number,
+        b.building_name,
+        c.community_name
+        FROM owner_house_rel r
+        INNER JOIN owner_info o ON r.owner_info_id = o.id AND o.is_deleted = 0
+        INNER JOIN house_info h ON r.house_info_id = h.id AND h.is_deleted = 0
+        LEFT JOIN building_info b ON h.building_id = b.id AND b.is_deleted = 0
+        LEFT JOIN community_info c ON b.community_id = c.id AND c.is_deleted = 0
+        <where>
+            r.is_deleted = 0
+            <if test="ownerId != null">
+                AND r.owner_info_id = #{ownerId}
+            </if>
+            <if test="houseId != null">
+                AND r.house_info_id = #{houseId}
+            </if>
+        </where>
+        ORDER BY r.is_primary DESC, r.create_time ASC
+    </select>
+
+    <!-- 批量插入关联关系 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO owner_house_rel (
+        owner_info_id,
+        house_info_id,
+        relation_type,
+        is_primary,
+        move_in_date,
+        create_time,
+        update_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.ownerInfoId},
+            #{item.houseInfoId},
+            #{item.relationType},
+            #{item.isPrimary},
+            #{item.moveInDate},
+            NOW(),
+            NOW()
+            )
+        </foreach>
+    </insert>
+
 </mapper>

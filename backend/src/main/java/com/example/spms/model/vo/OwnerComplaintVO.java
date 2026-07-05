@@ -12,7 +12,7 @@ public class OwnerComplaintVO {
 
     private Long id;
     private String complaintNo;
-    private Integer type;
+    private String type;
     private String title;
     private String content;
     private String contactPhone;

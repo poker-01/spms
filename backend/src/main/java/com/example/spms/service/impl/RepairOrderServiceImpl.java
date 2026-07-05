@@ -2,8 +2,8 @@ package com.example.spms.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.example.spms.common.Page;
 import com.example.spms.enums.RepairPriority;
 import com.example.spms.enums.RepairStatus;
 import com.example.spms.enums.RepairType;
@@ -45,9 +45,8 @@ public class RepairOrderServiceImpl extends ServiceImpl<RepairOrderMapper, Repai
     private final SysUserInfoService sysUserInfoService;
 
     @Override
-    public Page<RepairOrderVO> pageRepairs(RepairQueryRequest request) {
-        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Map<String, Object>> page =
-                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(request.getPage(), request.getSize());
+    public com.example.spms.common.Page<RepairOrderVO> pageRepairs(RepairQueryRequest request) {
+        Page<Map<String, Object>> page = new Page<>(request.getPage(), request.getSize());
         IPage<Map<String, Object>> result = repairOrderMapper.selectRepairOrderPage(
                 page,
                 request.getOrderNo(),
@@ -63,7 +62,7 @@ public class RepairOrderServiceImpl extends ServiceImpl<RepairOrderMapper, Repai
                 .map(this::convertToVO)
                 .collect(Collectors.toList());
 
-        return Page.of(result, records);
+        return com.example.spms.common.Page.of(result, records);
     }
 
     @Override
@@ -197,7 +196,7 @@ public class RepairOrderServiceImpl extends ServiceImpl<RepairOrderMapper, Repai
      * 转换为VO
      */
     private RepairOrderVO convertToVO(Map<String, Object> data) {
-        Integer repairType = (Integer) data.get("repair_type");
+        String repairType = (String) data.get("repair_type");
         Integer priority = (Integer) data.get("priority");
         Integer status = (Integer) data.get("status");
 
@@ -208,7 +207,7 @@ public class RepairOrderServiceImpl extends ServiceImpl<RepairOrderMapper, Repai
                 .ownerPhone(getString(data, "owner_phone"))
                 .houseNumber(getString(data, "house_number"))
                 .repairType(repairType)
-                .repairTypeName(RepairType.getDescByCode(repairType != null ? repairType : 5))
+                .repairTypeName(repairType)
                 .repairDesc(getString(data, "repair_desc"))
                 .repairPhone(getString(data, "repair_phone"))
                 .priority(priority)
@@ -227,7 +226,7 @@ public class RepairOrderServiceImpl extends ServiceImpl<RepairOrderMapper, Repai
      * 转换为详情VO
      */
     private RepairDetailVO convertToDetailVO(Map<String, Object> data) {
-        Integer repairType = (Integer) data.get("repair_type");
+        String repairType = (String) data.get("repair_type");
         Integer priority = (Integer) data.get("priority");
         Integer status = (Integer) data.get("status");
 
@@ -242,7 +241,7 @@ public class RepairOrderServiceImpl extends ServiceImpl<RepairOrderMapper, Repai
                 .buildingName(getString(data, "building_name"))
                 .communityName(getString(data, "community_name"))
                 .repairType(repairType)
-                .repairTypeName(RepairType.getDescByCode(repairType != null ? repairType : 5))
+                .repairTypeName(repairType)
                 .repairDesc(getString(data, "repair_desc"))
                 .repairPhone(getString(data, "repair_phone"))
                 .priority(priority)

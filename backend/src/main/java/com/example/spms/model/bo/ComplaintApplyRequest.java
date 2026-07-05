@@ -11,7 +11,7 @@ import lombok.Data;
 public class ComplaintApplyRequest {
 
     @NotNull(message = "类型不能为空")
-    private Integer type;
+    private String type;
 
     @NotBlank(message = "标题不能为空")
     private String title;

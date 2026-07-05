@@ -23,7 +23,7 @@ public class RepairOrder implements Serializable {
 
     private Long ownerId;
 
-    private Integer repairType;
+    private String repairType;
 
     private String repairDesc;
 

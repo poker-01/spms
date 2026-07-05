@@ -22,7 +22,7 @@ public class ComplaintSuggestion implements Serializable {
 
     private Long ownerId;
 
-    private Integer type;
+    private String type;
 
     private String title;
 

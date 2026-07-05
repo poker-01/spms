@@ -27,8 +27,8 @@ import java.util.stream.Collectors;
 /**
  * 投诉建议服务实现
  *
- * @Author SPMS
- * @Date 2026/07/05
+ * @author SPMS
+ * @date 2026/07/05
  */
 @Service
 @RequiredArgsConstructor
@@ -137,8 +137,8 @@ public class ComplaintSuggestionServiceImpl extends ServiceImpl<ComplaintSuggest
         List<Map<String, Object>> list = complaintSuggestionMapper.countByType();
         return list.stream().collect(Collectors.toMap(
                 m -> {
-                    Integer type = (Integer) m.get("type");
-                    return ComplaintType.getDescByCode(type);
+                    String type = (String) m.get("type");
+                    return type != null ? type : "其他";
                 },
                 m -> m.get("count"),
                 (v1, v2) -> v1
@@ -160,7 +160,7 @@ public class ComplaintSuggestionServiceImpl extends ServiceImpl<ComplaintSuggest
      * 转换为VO
      */
     private ComplaintVO convertToVO(Map<String, Object> data) {
-        Integer type = (Integer) data.get("type");
+        String type = (String) data.get("type");
         Integer status = (Integer) data.get("status");
 
         return ComplaintVO.builder()
@@ -170,7 +170,7 @@ public class ComplaintSuggestionServiceImpl extends ServiceImpl<ComplaintSuggest
                 .ownerPhone(getString(data, "owner_phone"))
                 .houseNumber(getString(data, "house_number"))
                 .type(type)
-                .typeName(ComplaintType.getDescByCode(type != null ? type : 5))
+                .typeName(type)
                 .title(getString(data, "title"))
                 .content(getString(data, "content"))
                 .contactPhone(getString(data, "contact_phone"))
@@ -187,7 +187,7 @@ public class ComplaintSuggestionServiceImpl extends ServiceImpl<ComplaintSuggest
      * 转换为详情VO
      */
     private ComplaintDetailVO convertToDetailVO(Map<String, Object> data) {
-        Integer type = (Integer) data.get("type");
+        String type = (String) data.get("type");
         Integer status = (Integer) data.get("status");
 
         return ComplaintDetailVO.builder()
@@ -201,7 +201,7 @@ public class ComplaintSuggestionServiceImpl extends ServiceImpl<ComplaintSuggest
                 .buildingName(getString(data, "building_name"))
                 .communityName(getString(data, "community_name"))
                 .type(type)
-                .typeName(ComplaintType.getDescByCode(type != null ? type : 5))
+                .typeName(type)
                 .title(getString(data, "title"))
                 .content(getString(data, "content"))
                 .contactPhone(getString(data, "contact_phone"))

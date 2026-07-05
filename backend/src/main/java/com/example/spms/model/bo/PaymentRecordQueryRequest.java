@@ -3,21 +3,23 @@ package com.example.spms.model.bo;
 import lombok.Data;
 
 /**
- * 投诉建议查询请求
+ * 缴费记录查询请求
  *
  * @Author SPMS
  * @Date 2026/07/05
  */
 @Data
-public class ComplaintQueryRequest {
+public class PaymentRecordQueryRequest {
 
-    private String complaintNo;
+    private String paymentNo;
 
-    private Integer status;
-
-    private String type;
+    private Long billId;
 
     private Long ownerId;
+
+    private Long houseId;
+
+    private Integer payMethod;
 
     private String startTime;
 

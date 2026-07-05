@@ -27,7 +27,7 @@ public class RepairOrderVO {
 
     private String repairTypeName;
 
-    private Integer repairType;
+    private String repairType;
 
     private String repairDesc;
 

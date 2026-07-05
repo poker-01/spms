@@ -28,7 +28,7 @@ public interface RepairOrderMapper extends BaseMapper<RepairOrder> {
     IPage<Map<String, Object>> selectRepairOrderPage(Page<?> page, 
                                                       @Param("orderNo") String orderNo,
                                                       @Param("status") Integer status,
-                                                      @Param("repairType") Integer repairType,
+                                                      @Param("repairType") String repairType,
                                                       @Param("ownerId") Long ownerId,
                                                       @Param("assigneeId") Long assigneeId,
                                                       @Param("startTime") String startTime,

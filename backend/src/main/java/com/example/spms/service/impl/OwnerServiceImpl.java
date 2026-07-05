@@ -119,6 +119,7 @@ public class OwnerServiceImpl implements OwnerService {
 
     @Override
     public void applyRepair(Long userId, RepairApplyRequest request) {
+<<<<<<< HEAD
         RepairOrder order = new RepairOrder();
         order.setOrderNo("RPR" + System.currentTimeMillis());
         order.setOwnerId(userId);
@@ -134,6 +135,42 @@ public class OwnerServiceImpl implements OwnerService {
         order.setCreateUser(userId);
         order.setUpdateUser(userId);
         repairOrderMapper.insert(order);
+=======
+        OwnerInfo owner = getOwnerByUserId(userId);
+        if (owner == null) {
+            throw new CustomException(ResultCode.NOT_FOUND, "业主信息不存在");
+        }
+
+        // 获取业主的主要房屋
+        OwnerHouseRel rel = ownerHouseRelMapper.selectOne(
+                new LambdaQueryWrapper<OwnerHouseRel>()
+                        .eq(OwnerHouseRel::getOwnerInfoId, owner.getId())
+                        .eq(OwnerHouseRel::getIsPrimary, 1)
+                        .eq(OwnerHouseRel::getIsDeleted, 0)
+                        .last("LIMIT 1")
+        );
+
+        if (rel == null) {
+            throw new CustomException(ResultCode.FAIL, "该业主未关联房屋");
+        }
+
+        String orderNo = "REP" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+
+        RepairOrder repair = new RepairOrder();
+        repair.setOrderNo(orderNo);
+        repair.setHouseId(rel.getHouseInfoId());
+        repair.setOwnerId(owner.getId());
+        repair.setRepairType(request.getRepairType());
+        repair.setRepairDesc(request.getContent());
+        repair.setRepairPhone(StringUtils.isNotBlank(request.getContactPhone())
+                ? request.getContactPhone() : owner.getOwnerPhone());
+        repair.setStatus(1); // 待派单
+        repair.setPriority(2); // 中优先级
+        repair.setIsDeleted(0);
+        repair.setVersion(0);
+
+        repairOrderMapper.insert(repair);
+>>>>>>> origin/dev
     }
 
     @Override

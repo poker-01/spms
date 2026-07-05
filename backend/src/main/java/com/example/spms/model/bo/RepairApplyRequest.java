@@ -12,5 +12,7 @@ public class RepairApplyRequest {
     @NotBlank(message = "报修内容不能为空")
     private String content;
 
+    private String repairType;
+
     private String contactPhone;
 }

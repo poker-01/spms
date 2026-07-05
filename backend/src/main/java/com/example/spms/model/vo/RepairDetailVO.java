@@ -33,7 +33,7 @@ public class RepairDetailVO {
 
     private String communityName;
 
-    private Integer repairType;
+    private String repairType;
 
     private String repairTypeName;
 

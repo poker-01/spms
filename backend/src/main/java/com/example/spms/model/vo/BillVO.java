@@ -3,19 +3,21 @@ package com.example.spms.model.vo;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 /**
- * 投诉建议VO（列表展示）
+ * 账单VO（列表展示）
  *
  * @Author SPMS
  * @Date 2026/07/05
  */
 @Data
 @Builder
-public class ComplaintVO {
+public class BillVO {
 
     private Long id;
 
-    private String complaintNo;
+    private String billNo;
 
     private String ownerName;
 
@@ -23,23 +25,23 @@ public class ComplaintVO {
 
     private String houseNumber;
 
-    private String type;
+    private String buildingName;
 
-    private String typeName;
+    private String itemName;
 
-    private String title;
+    private String billPeriod;
 
-    private String content;
+    private BigDecimal billAmount;
 
-    private String contactPhone;
+    private BigDecimal paidAmount;
 
     private Integer status;
 
     private String statusName;
 
-    private String replyContent;
+    private String payDeadline;
 
-    private String replyTime;
+    private String payTime;
 
     private String createTime;
 

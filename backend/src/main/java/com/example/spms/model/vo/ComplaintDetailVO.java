@@ -31,7 +31,7 @@ public class ComplaintDetailVO {
 
     private String communityName;
 
-    private Integer type;
+    private String type;
 
     private String typeName;
 
