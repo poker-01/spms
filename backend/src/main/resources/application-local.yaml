@@ -4,8 +4,11 @@ server:
 spring:
   application:
     name: spms
-  profiles:
-    active: local
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/spms?characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
 
   #Jackson 时间格式化
   jackson:
