@@ -15,8 +15,8 @@ import java.util.Map;
 /**
  * 投诉建议Mapper
  *
- * @Author SPMS
- * @Date 2026/07/05
+ * @author SPMS
+ * @date 2026/07/05
  */
 @Mapper
 public interface ComplaintSuggestionMapper extends BaseMapper<ComplaintSuggestion> {

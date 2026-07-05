@@ -4,28 +4,48 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.spms.mapper.PaymentRecordMapper">
 
-    <resultMap id="BaseResultMap" type="com.example.spms.model.po.PaymentRecord">
-            <id property="id" column="id" />
-            <result property="paymentNo" column="payment_no" />
-            <result property="billId" column="bill_id" />
-            <result property="houseId" column="house_id" />
-            <result property="ownerId" column="owner_id" />
-            <result property="payAmount" column="pay_amount" />
-            <result property="payMethod" column="pay_method" />
-            <result property="payTime" column="pay_time" />
-            <result property="operatorId" column="operator_id" />
-            <result property="receiptNo" column="receipt_no" />
-            <result property="isDeleted" column="is_deleted" />
-            <result property="version" column="version" />
-            <result property="createTime" column="create_time" />
-            <result property="updateTime" column="update_time" />
-            <result property="createUser" column="create_user" />
-            <result property="updateUser" column="update_user" />
-    </resultMap>
-
-    <sql id="Base_Column_List">
-        id,payment_no,bill_id,house_id,owner_id,pay_amount,
-        pay_method,pay_time,operator_id,receipt_no,is_deleted,
-        version,create_time,update_time,create_user,update_user
-    </sql>
+    <!-- 分页查询缴费记录 -->
+    <select id="selectPaymentRecordPage" resultType="java.util.HashMap">
+        SELECT
+        p.id,
+        p.payment_no,
+        p.bill_id,
+        p.pay_amount,
+        p.pay_method,
+        p.pay_time,
+        p.receipt_no,
+        p.create_time,
+        b.bill_no,
+        o.owner_name,
+        h.house_number,
+        u.full_name as operator_name
+        FROM payment_record p
+        LEFT JOIN bill_info b ON p.bill_id = b.id AND b.is_deleted = 0
+        LEFT JOIN owner_info o ON p.owner_id = o.id AND o.is_deleted = 0
+        LEFT JOIN house_info h ON p.house_id = h.id AND h.is_deleted = 0
+        LEFT JOIN sys_user_info u ON p.operator_id = u.id AND u.is_deleted = 0
+        WHERE p.is_deleted = 0
+        <if test="paymentNo != null and paymentNo != ''">
+            AND p.payment_no LIKE CONCAT('%', #{paymentNo}, '%')
+        </if>
+        <if test="billId != null">
+            AND p.bill_id = #{billId}
+        </if>
+        <if test="ownerId != null">
+            AND p.owner_id = #{ownerId}
+        </if>
+        <if test="houseId != null">
+            AND p.house_id = #{houseId}
+        </if>
+        <if test="payMethod != null">
+            AND p.pay_method = #{payMethod}
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND p.pay_time >= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND p.pay_time &lt;= #{endTime}
+        </if>
+        ORDER BY p.pay_time DESC
+    </select>
 </mapper>
