@@ -34,5 +34,3 @@ coverage/
 .env.*.local
 application-local.yaml
 application-local.properties
-
-application.yaml

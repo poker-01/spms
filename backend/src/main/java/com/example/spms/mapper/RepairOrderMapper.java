@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.spms.model.po.RepairOrder;
 import com.example.spms.model.vo.DashboardStatsVO;
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -18,6 +19,7 @@ import java.util.Map;
  * @Author SPMS
  * @Date 2026/07/05
  */
+@Mapper
 public interface RepairOrderMapper extends BaseMapper<RepairOrder> {
 
     /**
