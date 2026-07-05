@@ -30,6 +30,16 @@ public class Page<T> {
     /** 数据列表 */
     private List<T> records;
 
+    public static <T> Page<T> of(IPage<?> page, List<T> records) {
+        Page<T> result = new Page<>();
+        result.setTotal(page.getTotal());
+        result.setPages(page.getPages());
+        result.setCurrent(page.getCurrent());
+        result.setSize(page.getSize());
+        result.setRecords(records);
+        return result;
+    }
+
     public static <T> Page<T> of(IPage<T> page) {
         Page<T> result = new Page<>();
         result.setTotal(page.getTotal());
