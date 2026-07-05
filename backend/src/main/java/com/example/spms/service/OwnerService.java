@@ -1,50 +1,46 @@
 package com.example.spms.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
-import com.example.spms.common.Page;
-import com.example.spms.model.bo.OwnerQueryRequest;
-import com.example.spms.model.bo.OwnerSaveRequest;
-import com.example.spms.model.bo.OwnerUpdateRequest;
-import com.example.spms.model.po.OwnerInfo;
-import com.example.spms.model.vo.OwnerHouseRelVO;
-import com.example.spms.model.vo.OwnerVO;
+import com.example.spms.model.bo.ComplaintApplyRequest;
+import com.example.spms.model.bo.RepairApplyRequest;
+import com.example.spms.model.vo.OwnerBillVO;
+import com.example.spms.model.vo.OwnerComplaintVO;
+import com.example.spms.model.vo.OwnerHomeVO;
+import com.example.spms.model.vo.OwnerRepairVO;
 
 import java.util.List;
 
-public interface OwnerService extends IService<OwnerInfo> {
+/**
+ * 业主端服务接口
+ */
+public interface OwnerService {
 
     /**
-     * 分页查询业主
+     * 获取业主首页概览数据
      */
-    Page<OwnerVO> pageQuery(OwnerQueryRequest request);
+    OwnerHomeVO getHomeData(Long userId);
 
     /**
-     * 新增业主
+     * 获取业主账单列表
      */
-    void saveOwner(OwnerSaveRequest request);
+    List<OwnerBillVO> listBills(Long userId);
 
     /**
-     * 修改业主
+     * 获取业主报修列表
      */
-    void updateOwner(OwnerUpdateRequest request);
+    List<OwnerRepairVO> listRepairs(Long userId);
 
     /**
-     * 查询业主详情
+     * 提交报修申请
      */
-    OwnerVO getOwnerDetail(Long id);
+    void applyRepair(Long userId, RepairApplyRequest request);
 
     /**
-     * 根据房屋ID查询业主
+     * 获取业主投诉建议列表
      */
-    OwnerVO getOwnerByHouseId(Long houseId);
+    List<OwnerComplaintVO> listComplaints(Long userId);
 
     /**
-     * 查询业主关联的房屋列表
+     * 提交投诉建议
      */
-    List<OwnerHouseRelVO> listOwnerHouses(Long ownerId);
-
-    /**
-     * 查询全部业主（下拉列表用）
-     */
-    List<OwnerVO> listAll();
+    void applyComplaint(Long userId, ComplaintApplyRequest request);
 }
