@@ -5,19 +5,24 @@
 <mapper namespace="com.example.spms.mapper.BuildingInfoMapper">
 
     <resultMap id="BaseResultMap" type="com.example.spms.model.po.BuildingInfo">
-            <id property="id" column="id" />
-            <result property="communityId" column="community_id" />
-            <result property="buildingCode" column="building_code" />
-            <result property="buildingName" column="building_name" />
-            <result property="totalFloors" column="total_floors" />
-            <result property="totalUnits" column="total_units" />
-            <result property="status" column="status" />
-            <result property="isDeleted" column="is_deleted" />
-            <result property="version" column="version" />
-            <result property="createTime" column="create_time" />
-            <result property="updateTime" column="update_time" />
-            <result property="createUser" column="create_user" />
-            <result property="updateUser" column="update_user" />
+        <id property="id" column="id" />
+        <result property="communityId" column="community_id" />
+        <result property="buildingCode" column="building_code" />
+        <result property="buildingName" column="building_name" />
+        <result property="totalFloors" column="total_floors" />
+        <result property="totalUnits" column="total_units" />
+        <result property="status" column="status" />
+        <result property="isDeleted" column="is_deleted" />
+        <result property="version" column="version" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+        <result property="createUser" column="create_user" />
+        <result property="updateUser" column="update_user" />
+    </resultMap>
+
+    <!-- 扩展 ResultMap：带小区名称 -->
+    <resultMap id="WithCommunityResultMap" type="com.example.spms.model.po.BuildingInfo" extends="BaseResultMap">
+        <result column="community_name" property="communityName" />
     </resultMap>
 
     <sql id="Base_Column_List">
@@ -25,4 +30,70 @@
         status,is_deleted,version,create_time,update_time,
         create_user,update_user
     </sql>
+
+    <!-- 分页查询楼栋（带条件） -->
+    <select id="selectPageByCondition" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM building_info
+        <where>
+            is_deleted = 0
+            <if test="communityId != null">
+                AND community_id = #{communityId}
+            </if>
+            <if test="buildingName != null and buildingName != ''">
+                AND building_name LIKE CONCAT('%', #{buildingName}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY building_code
+    </select>
+
+    <!-- 查询楼栋带小区名称 -->
+    <select id="selectWithCommunityName" resultMap="WithCommunityResultMap">
+        SELECT
+        b.id,
+        b.community_id,
+        b.building_code,
+        b.building_name,
+        b.total_floors,
+        b.total_units,
+        b.status,
+        b.is_deleted,
+        b.version,
+        b.create_time,
+        b.update_time,
+        b.create_user,
+        b.update_user,
+        c.community_name
+        FROM building_info b
+        LEFT JOIN community_info c ON b.community_id = c.id
+        <where>
+            b.is_deleted = 0
+            <if test="communityId != null">
+                AND b.community_id = #{communityId}
+            </if>
+        </where>
+        ORDER BY b.building_code
+    </select>
+
+    <!-- 查询楼栋及其房屋数量 -->
+    <select id="selectWithHouseCount" resultType="java.util.HashMap">
+        SELECT
+        b.id,
+        b.building_code,
+        b.building_name,
+        b.status,
+        (SELECT COUNT(*) FROM house_info WHERE building_id = b.id AND is_deleted = 0) AS house_count,
+        (SELECT COUNT(*) FROM house_info WHERE building_id = b.id AND status = 0 AND is_deleted = 0) AS vacant_count,
+        (SELECT COUNT(*) FROM house_info WHERE building_id = b.id AND status = 1 AND is_deleted = 0) AS occupied_count
+        FROM building_info b
+        WHERE b.is_deleted = 0
+        <if test="communityId != null">
+            AND b.community_id = #{communityId}
+        </if>
+        ORDER BY b.building_code
+    </select>
+
 </mapper>
