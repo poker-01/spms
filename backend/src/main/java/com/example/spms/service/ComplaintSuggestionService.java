@@ -1,13 +1,54 @@
 package com.example.spms.service;
 
-import com.example.spms.model.po.ComplaintSuggestion;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.spms.common.Page;
+import com.example.spms.model.bo.ComplaintApplyRequest;
+import com.example.spms.model.bo.ComplaintQueryRequest;
+import com.example.spms.model.bo.ComplaintReplyRequest;
+import com.example.spms.model.po.ComplaintSuggestion;
+import com.example.spms.model.vo.ComplaintDetailVO;
+import com.example.spms.model.vo.ComplaintVO;
 
 /**
-* @author poker
-* @description 针对表【complaint_suggestion(投诉建议表)】的数据库操作Service
-* @createDate 2026-07-03 15:19:38
-*/
+ * 投诉建议服务接口
+ *
+ * @Author SPMS
+ * @Date 2026/07/05
+ */
 public interface ComplaintSuggestionService extends IService<ComplaintSuggestion> {
 
+    /**
+     * 分页查询投诉建议
+     */
+    Page<ComplaintVO> pageComplaints(ComplaintQueryRequest request);
+
+    /**
+     * 获取投诉建议详情
+     */
+    ComplaintDetailVO getComplaintDetail(Long complaintId);
+
+    /**
+     * 提交投诉建议（业主端）
+     */
+    void submitComplaint(Long userId, ComplaintApplyRequest request);
+
+    /**
+     * 回复投诉建议（物业端）
+     */
+    void replyComplaint(ComplaintReplyRequest request);
+
+    /**
+     * 关闭投诉
+     */
+    void closeComplaint(Long complaintId);
+
+    /**
+     * 统计各状态投诉数量
+     */
+    Object countByStatus();
+
+    /**
+     * 统计各类投诉数量
+     */
+    Object countByType();
 }
