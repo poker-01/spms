@@ -4,34 +4,105 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.spms.mapper.RepairOrderMapper">
 
-    <resultMap id="BaseResultMap" type="com.example.spms.model.po.RepairOrder">
-            <id property="id" column="id" />
-            <result property="orderNo" column="order_no" />
-            <result property="houseId" column="house_id" />
-            <result property="ownerId" column="owner_id" />
-            <result property="repairType" column="repair_type" />
-            <result property="repairDesc" column="repair_desc" />
-            <result property="repairPhone" column="repair_phone" />
-            <result property="priority" column="priority" />
-            <result property="status" column="status" />
-            <result property="assigneeId" column="assignee_id" />
-            <result property="assignTime" column="assign_time" />
-            <result property="repairTime" column="repair_time" />
-            <result property="repairCost" column="repair_cost" />
-            <result property="evaluateScore" column="evaluate_score" />
-            <result property="evaluateComment" column="evaluate_comment" />
-            <result property="isDeleted" column="is_deleted" />
-            <result property="version" column="version" />
-            <result property="createTime" column="create_time" />
-            <result property="updateTime" column="update_time" />
-            <result property="createUser" column="create_user" />
-            <result property="updateUser" column="update_user" />
+    <resultMap id="RepairOrderVOMap" type="java.util.HashMap">
+        <id property="id" column="id" javaType="java.lang.Long"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="ownerName" column="owner_name"/>
+        <result property="ownerPhone" column="owner_phone"/>
+        <result property="houseNumber" column="house_number"/>
+        <result property="repairType" column="repair_type"/>
+        <result property="repairDesc" column="repair_desc"/>
+        <result property="repairPhone" column="repair_phone"/>
+        <result property="priority" column="priority"/>
+        <result property="status" column="status"/>
+        <result property="assigneeName" column="assignee_name"/>
+        <result property="repairCost" column="repair_cost"/>
+        <result property="evaluateScore" column="evaluate_score"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
     </resultMap>
 
-    <sql id="Base_Column_List">
-        id,order_no,house_id,owner_id,repair_type,repair_desc,
-        repair_phone,priority,status,assignee_id,assign_time,
-        repair_time,repair_cost,evaluate_score,evaluate_comment,is_deleted,
-        version,create_time,update_time,create_user,update_user
-    </sql>
+    <!-- 分页查询报修工单 -->
+    <select id="selectRepairOrderPage" resultType="java.util.HashMap">
+        SELECT
+        r.id,
+        r.order_no,
+        r.repair_type,
+        r.repair_desc,
+        r.repair_phone,
+        r.priority,
+        r.status,
+        r.repair_cost,
+        r.evaluate_score,
+        r.create_time,
+        r.update_time,
+        o.owner_name,
+        o.owner_phone,
+        h.house_number,
+        u.full_name as assignee_name
+        FROM repair_order r
+        LEFT JOIN owner_info o ON r.owner_id = o.id AND o.is_deleted = 0
+        LEFT JOIN house_info h ON r.house_id = h.id AND h.is_deleted = 0
+        LEFT JOIN sys_user_info u ON r.assignee_id = u.id AND u.is_deleted = 0
+        WHERE r.is_deleted = 0
+        <if test="orderNo != null and orderNo != ''">
+            AND r.order_no LIKE CONCAT('%', #{orderNo}, '%')
+        </if>
+        <if test="status != null">
+            AND r.status = #{status}
+        </if>
+        <if test="repairType != null">
+            AND r.repair_type = #{repairType}
+        </if>
+        <if test="ownerId != null">
+            AND r.owner_id = #{ownerId}
+        </if>
+        <if test="assigneeId != null">
+            AND r.assignee_id = #{assigneeId}
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND r.create_time >= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND r.create_time &lt;= #{endTime}
+        </if>
+        ORDER BY r.create_time DESC
+    </select>
+
+    <!-- 查询报修工单详情 -->
+    <select id="selectRepairOrderDetail" resultType="java.util.HashMap">
+        SELECT
+            r.id,
+            r.order_no,
+            r.owner_id,
+            o.owner_name,
+            o.owner_phone,
+            r.house_id,
+            h.house_number,
+            b.building_name,
+            c.community_name,
+            r.repair_type,
+            r.repair_desc,
+            r.repair_phone,
+            r.priority,
+            r.status,
+            r.assignee_id,
+            u.full_name as assignee_name,
+            u.phone_number as assignee_phone,
+            r.assign_time,
+            r.repair_time,
+            r.repair_cost,
+            r.repair_result,
+            r.evaluate_score,
+            r.evaluate_comment,
+            r.create_time,
+            r.update_time
+        FROM repair_order r
+                 LEFT JOIN owner_info o ON r.owner_id = o.id AND o.is_deleted = 0
+                 LEFT JOIN house_info h ON r.house_id = h.id AND h.is_deleted = 0
+                 LEFT JOIN building_info b ON h.building_id = b.id AND b.is_deleted = 0
+                 LEFT JOIN community_info c ON b.community_id = c.id AND c.is_deleted = 0
+                 LEFT JOIN sys_user_info u ON r.assignee_id = u.id AND u.is_deleted = 0
+        WHERE r.id = #{orderId} AND r.is_deleted = 0
+    </select>
 </mapper>
