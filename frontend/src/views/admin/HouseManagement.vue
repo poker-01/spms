@@ -6,15 +6,15 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 const houseApi = {
   // 获取房屋列表（分页）
   getList: (params: any) => {
-    // return request.get('/api/v1/houses', { params })
+    // return request.get('/api/v1/houses/page', { params })
     return Promise.resolve({ data: { list: [], total: 0 } })
   },
-  // 查询某楼栋所有房屋（下拉列表用）
+  // 根据楼栋查房屋
   getByBuilding: (buildingId: number) => {
     // return request.get(`/api/v1/houses/by-building/${buildingId}`)
     return Promise.resolve({ data: [] })
   },
-  // 查询某业主所有房屋（业主端显示）
+  // 根据业主查房屋
   getByOwner: (ownerId: number) => {
     // return request.get(`/api/v1/houses/by-owner/${ownerId}`)
     return Promise.resolve({ data: [] })
@@ -33,12 +33,18 @@ const houseApi = {
   delete: (id: number) => {
     // return request.delete(`/api/v1/houses/${id}`)
     return Promise.resolve({ data: {} })
+  },
+  // 房屋详情
+  getDetail: (id: number) => {
+    // return request.get(`/api/v1/houses/${id}`)
+    return Promise.resolve({ data: {} })
   }
 }
 
 const communityApi = {
-  getOptions: () => {
-    // return request.get('/api/v1/communities/options')
+  // 获取小区下拉列表
+  getList: () => {
+    // return request.get('/api/v1/communities/list')
     return Promise.resolve({ data: [] })
   }
 }
@@ -97,7 +103,7 @@ const statusMap = [
 
 const loadCommunityOptions = async () => {
   try {
-    const res = await communityApi.getOptions()
+    const res = await communityApi.getList()
     communityOptions.value = res.data || []
     if (communityOptions.value.length > 0) {
       communityId.value = communityOptions.value[0].id
@@ -180,11 +186,16 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row: any) => {
+const handleEdit = async (row: any) => {
   isEdit.value = true
   dialogTitle.value = '编辑房屋'
-  Object.assign(form, row)
-  dialogVisible.value = true
+  try {
+    const res = await houseApi.getDetail(row.id)
+    Object.assign(form, res.data)
+    dialogVisible.value = true
+  } catch (error) {
+    ElMessage.error('加载房屋信息失败')
+  }
 }
 
 const handleDelete = (row: any) => {

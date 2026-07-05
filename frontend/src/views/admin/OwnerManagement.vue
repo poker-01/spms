@@ -6,7 +6,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 const ownerApi = {
   // 获取业主列表（分页）
   getList: (params: any) => {
-    // return request.get('/api/v1/owners', { params })
+    // return request.get('/api/v1/owners/page', { params })
     return Promise.resolve({ data: { list: [], total: 0 } })
   },
   // 根据房屋查询业主
@@ -32,6 +32,11 @@ const ownerApi = {
   // 删除业主
   delete: (id: number) => {
     // return request.delete(`/api/v1/owners/${id}`)
+    return Promise.resolve({ data: {} })
+  },
+  // 业主详情
+  getDetail: (id: number) => {
+    // return request.get(`/api/v1/owners/${id}`)
     return Promise.resolve({ data: {} })
   }
 }
@@ -114,11 +119,16 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row: any) => {
+const handleEdit = async (row: any) => {
   isEdit.value = true
   dialogTitle.value = '编辑业主'
-  Object.assign(form, row)
-  dialogVisible.value = true
+  try {
+    const res = await ownerApi.getDetail(row.id)
+    Object.assign(form, res.data)
+    dialogVisible.value = true
+  } catch (error) {
+    ElMessage.error('加载业主信息失败')
+  }
 }
 
 const handleDelete = (row: any) => {

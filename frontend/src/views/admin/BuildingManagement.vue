@@ -6,7 +6,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 const buildingApi = {
   // 获取楼栋列表（分页）
   getList: (params: any) => {
-    // return request.get('/api/v1/buildings', { params })
+    // return request.get('/api/v1/buildings/page', { params })
     return Promise.resolve({ data: { list: [], total: 0 } })
   },
   // 查询某小区所有楼栋（下拉列表用）
@@ -28,12 +28,18 @@ const buildingApi = {
   delete: (id: number) => {
     // return request.delete(`/api/v1/buildings/${id}`)
     return Promise.resolve({ data: {} })
+  },
+  // 楼栋详情
+  getDetail: (id: number) => {
+    // return request.get(`/api/v1/buildings/${id}`)
+    return Promise.resolve({ data: {} })
   }
 }
 
 const communityApi = {
-  getOptions: () => {
-    // return request.get('/api/v1/communities/options')
+  // 获取小区下拉列表
+  getList: () => {
+    // return request.get('/api/v1/communities/list')
     return Promise.resolve({ data: [] })
   }
 }
@@ -73,7 +79,7 @@ const form = reactive({
 
 const loadCommunityOptions = async () => {
   try {
-    const res = await communityApi.getOptions()
+    const res = await communityApi.getList()
     communityOptions.value = res.data || []
     if (communityOptions.value.length > 0) {
       communityId.value = communityOptions.value[0].id
@@ -136,11 +142,16 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row: any) => {
+const handleEdit = async (row: any) => {
   isEdit.value = true
   dialogTitle.value = '编辑楼栋'
-  Object.assign(form, row)
-  dialogVisible.value = true
+  try {
+    const res = await buildingApi.getDetail(row.id)
+    Object.assign(form, res.data)
+    dialogVisible.value = true
+  } catch (error) {
+    ElMessage.error('加载楼栋信息失败')
+  }
 }
 
 const handleDelete = (row: any) => {

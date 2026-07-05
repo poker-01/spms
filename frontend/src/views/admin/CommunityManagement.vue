@@ -6,8 +6,13 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 const communityApi = {
   // 获取小区列表（分页）
   getList: (params: any) => {
-    // return request.get('/api/v1/communities', { params })
+    // return request.get('/api/v1/communities/page', { params })
     return Promise.resolve({ data: { list: [], total: 0 } })
+  },
+  // 获取小区下拉列表
+  getOptions: () => {
+    // return request.get('/api/v1/communities/list')
+    return Promise.resolve({ data: [] })
   },
   // 新增小区
   create: (data: any) => {
@@ -22,6 +27,11 @@ const communityApi = {
   // 删除小区
   delete: (id: number) => {
     // return request.delete(`/api/v1/communities/${id}`)
+    return Promise.resolve({ data: {} })
+  },
+  // 小区详情
+  getDetail: (id: number) => {
+    // return request.get(`/api/v1/communities/${id}`)
     return Promise.resolve({ data: {} })
   }
 }
@@ -112,11 +122,16 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row: any) => {
+const handleEdit = async (row: any) => {
   isEdit.value = true
   dialogTitle.value = '编辑小区'
-  Object.assign(form, row)
-  dialogVisible.value = true
+  try {
+    const res = await communityApi.getDetail(row.id)
+    Object.assign(form, res.data)
+    dialogVisible.value = true
+  } catch (error) {
+    ElMessage.error('加载小区信息失败')
+  }
 }
 
 const handleDelete = (row: any) => {
