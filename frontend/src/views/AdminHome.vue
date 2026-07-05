@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import { useUserStore } from '@/stores/user'
 import { formatRoleLabels } from '@/utils/role'
@@ -8,16 +9,44 @@ defineOptions({
   name: 'AdminHome',
 })
 
+const router = useRouter()
 const userStore = useUserStore()
 
 const roleText = computed(() => formatRoleLabels(userStore.userInfo?.roles))
 
+// 模块卡片配置 - 统一使用完整路径
 const moduleCards = [
-  { title: '小区管理', desc: '维护小区、楼栋、房屋和业主档案' },
-  { title: '物业服务', desc: '处理报修派单、投诉建议和工单跟踪' },
-  { title: '财务管理', desc: '配置费用项目、生成账单并登记缴费' },
-  { title: '数据统计', desc: '查看入住率、报修量和缴费率等运营指标' },
+  {
+    title: '小区管理',
+    desc: '维护小区、楼栋、房屋和业主档案',
+    icon: '🏘️',
+    path: '/admin/community'  // 修复：添加 /admin/ 前缀
+  },
+  {
+    title: '楼栋管理',
+    desc: '管理小区楼栋信息和单元配置',
+    icon: '🏢',
+    path: '/admin/building'
+  },
+  {
+    title: '房屋管理',
+    desc: '管理房屋信息、户型和入住状态',
+    icon: '🏠',
+    path: '/admin/house'
+  },
+  {
+    title: '业主管理',
+    desc: '管理业主信息、档案和联系记录',
+    icon: '👤',
+    path: '/admin/owner'
+  },
 ]
+
+// 跳转到对应页面
+const goToPage = (path: string) => {
+  console.log('跳转到:', path)  // 添加调试日志
+  router.push(path)
+}
 
 onMounted(async () => {
   if (!userStore.userInfo) {
@@ -78,10 +107,20 @@ onMounted(async () => {
         </article>
       </section>
 
+      <!-- 功能模块卡片 - 可点击跳转 -->
       <section class="admin-home__modules">
-        <article v-for="item in moduleCards" :key="item.title" class="admin-home-module">
+        <article
+          v-for="item in moduleCards"
+          :key="item.title"
+          class="admin-home-module"
+          @click="goToPage(item.path)"
+        >
+          <div class="admin-home-module__icon">{{ item.icon }}</div>
           <h3 class="admin-home-module__title">{{ item.title }}</h3>
           <p class="admin-home-module__desc">{{ item.desc }}</p>
+          <div class="admin-home-module__arrow">
+            <span>进入管理 →</span>
+          </div>
         </article>
       </section>
     </main>
@@ -136,8 +175,7 @@ onMounted(async () => {
   margin-bottom: 20px;
 }
 
-.admin-home-card,
-.admin-home-module {
+.admin-home-card {
   padding: 24px;
   border-radius: var(--radius-lg);
   background: var(--color-card);
@@ -145,8 +183,7 @@ onMounted(async () => {
   box-shadow: var(--shadow-sm);
 }
 
-.admin-home-card__title,
-.admin-home-module__title {
+.admin-home-card__title {
   margin: 0 0 16px;
   font-size: 18px;
 }
@@ -178,19 +215,76 @@ onMounted(async () => {
   text-align: right;
 }
 
-.admin-home-card__hint,
-.admin-home-module__desc {
+.admin-home-card__hint {
   margin: 16px 0 0;
   color: var(--color-text-secondary);
   font-size: 14px;
 }
 
+/* 功能模块卡片 - 可点击样式 */
 .admin-home__modules {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
 }
 
+.admin-home-module {
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-home-module:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+  border-color: var(--color-primary);
+}
+
+.admin-home-module:active {
+  transform: translateY(-2px) scale(0.98);
+}
+
+.admin-home-module__icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.admin-home-module__title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.admin-home-module__desc {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.admin-home-module__arrow {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--color-primary);
+  font-weight: 500;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: all 0.3s ease;
+}
+
+.admin-home-module:hover .admin-home-module__arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* 响应式 */
 @media (max-width: 1024px) {
   .admin-home__modules {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -209,6 +303,10 @@ onMounted(async () => {
 
   .admin-home__title {
     font-size: 26px;
+  }
+
+  .admin-home-module {
+    padding: 20px;
   }
 }
 </style>

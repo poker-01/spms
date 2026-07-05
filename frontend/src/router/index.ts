@@ -1,4 +1,3 @@
-
 import { createRouter, createWebHistory } from 'vue-router'
 import { getToken } from '@/utils/auth'
 import { getDefaultHomePath, isOwnerUser, isPropertyUser } from '@/utils/role'
@@ -66,6 +65,32 @@ const router = createRouter({
           component: () => import('@/views/AdminHome.vue'),
           meta: { requiresAuth: true, portal: 'property' },
         },
+        // ========== 新增四个管理页面路由 ==========
+        {
+          path: 'community',
+          name: 'CommunityManagement',
+          component: () => import('@/views/admin/CommunityManagement.vue'),
+          meta: { requiresAuth: true, portal: 'property' },
+        },
+        {
+          path: 'building',
+          name: 'BuildingManagement',
+          component: () => import('@/views/admin/BuildingManagement.vue'),
+          meta: { requiresAuth: true, portal: 'property' },
+        },
+        {
+          path: 'house',
+          name: 'HouseManagement',
+          component: () => import('@/views/admin/HouseManagement.vue'),
+          meta: { requiresAuth: true, portal: 'property' },
+        },
+        {
+          path: 'owner',
+          name: 'OwnerManagement',
+          component: () => import('@/views/admin/OwnerManagement.vue'),
+          meta: { requiresAuth: true, portal: 'property' },
+        },
+        // ========================================
         {
           path: 'users',
           name: 'UserManage',
