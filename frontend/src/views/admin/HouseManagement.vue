@@ -9,6 +9,11 @@ const houseApi = {
     // return request.get('/api/v1/houses/page', { params })
     return Promise.resolve({ data: { list: [], total: 0 } })
   },
+  // 查询全部房屋（下拉列表用）
+  getListAll: () => {
+    // return request.get('/api/v1/houses/list')
+    return Promise.resolve({ data: [] })
+  },
   // 根据楼栋查房屋
   getByBuilding: (buildingId: number) => {
     // return request.get(`/api/v1/houses/by-building/${buildingId}`)
@@ -25,8 +30,8 @@ const houseApi = {
     return Promise.resolve({ data: {} })
   },
   // 更新房屋
-  update: (id: number, data: any) => {
-    // return request.put(`/api/v1/houses/${id}`, data)
+  update: (data: any) => {
+    // return request.put('/api/v1/houses', data)
     return Promise.resolve({ data: {} })
   },
   // 删除房屋
@@ -135,7 +140,8 @@ const loadData = async () => {
       page: pagination.current,
       pageSize: pagination.pageSize,
       buildingId: buildingId.value,
-      ...searchForm
+      houseNumber: searchForm.houseNumber,
+      status: searchForm.status
     }
     const res = await houseApi.getList(params)
     tableData.value = res.data.list || []
@@ -217,14 +223,13 @@ const handleDelete = (row: any) => {
 const handleSubmit = async () => {
   try {
     if (isEdit.value) {
-      await houseApi.update(form.id!, form)
+      await houseApi.update(form)
       ElMessage.success('更新成功')
     } else {
       await houseApi.create(form)
       ElMessage.success('新增成功')
     }
-    dialogVisible.value = false
-    loadData()
+    dialogVisible.value = false    loadData()
   } catch (error) {
     ElMessage.error(isEdit.value ? '更新失败' : '新增失败')
   }

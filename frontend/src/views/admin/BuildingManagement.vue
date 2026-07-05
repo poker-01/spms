@@ -9,6 +9,11 @@ const buildingApi = {
     // return request.get('/api/v1/buildings/page', { params })
     return Promise.resolve({ data: { list: [], total: 0 } })
   },
+  // 查询全部楼栋（下拉列表用）
+  getListAll: () => {
+    // return request.get('/api/v1/buildings/list')
+    return Promise.resolve({ data: [] })
+  },
   // 查询某小区所有楼栋（下拉列表用）
   getByCommunity: (communityId: number) => {
     // return request.get(`/api/v1/buildings/by-community/${communityId}`)
@@ -20,8 +25,8 @@ const buildingApi = {
     return Promise.resolve({ data: {} })
   },
   // 更新楼栋
-  update: (id: number, data: any) => {
-    // return request.put(`/api/v1/buildings/${id}`, data)
+  update: (data: any) => {
+    // return request.put('/api/v1/buildings', data)
     return Promise.resolve({ data: {} })
   },
   // 删除楼栋
@@ -95,8 +100,8 @@ const loadData = async () => {
     const params = {
       page: pagination.current,
       pageSize: pagination.pageSize,
-      communityId: communityId.value,
-      ...searchForm
+      buildingName: searchForm.buildingName,
+      communityId: searchForm.communityId || communityId.value
     }
     const res = await buildingApi.getList(params)
     tableData.value = res.data.list || []
@@ -173,7 +178,7 @@ const handleDelete = (row: any) => {
 const handleSubmit = async () => {
   try {
     if (isEdit.value) {
-      await buildingApi.update(form.id!, form)
+      await buildingApi.update(form)
       ElMessage.success('更新成功')
     } else {
       await buildingApi.create(form)
