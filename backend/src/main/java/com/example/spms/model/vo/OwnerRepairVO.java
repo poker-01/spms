@@ -14,7 +14,7 @@ public class OwnerRepairVO {
 
     private Long id;
     private String orderNo;
-    private Integer repairType;
+    private String repairType;
     private String repairDesc;
     private String repairPhone;
     private Integer priority;

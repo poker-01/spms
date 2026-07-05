@@ -4,31 +4,87 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.spms.mapper.BillInfoMapper">
 
-    <resultMap id="BaseResultMap" type="com.example.spms.model.po.BillInfo">
-            <id property="id" column="id" />
-            <result property="billNo" column="bill_no" />
-            <result property="houseId" column="house_id" />
-            <result property="ownerId" column="owner_id" />
-            <result property="feeItemId" column="fee_item_id" />
-            <result property="billPeriod" column="bill_period" />
-            <result property="billAmount" column="bill_amount" />
-            <result property="paidAmount" column="paid_amount" />
-            <result property="status" column="status" />
-            <result property="payDeadline" column="pay_deadline" />
-            <result property="payTime" column="pay_time" />
-            <result property="payMethod" column="pay_method" />
-            <result property="isDeleted" column="is_deleted" />
-            <result property="version" column="version" />
-            <result property="createTime" column="create_time" />
-            <result property="updateTime" column="update_time" />
-            <result property="createUser" column="create_user" />
-            <result property="updateUser" column="update_user" />
-    </resultMap>
+    <!-- 分页查询账单 -->
+    <select id="selectBillPage" resultType="java.util.HashMap">
+        SELECT
+        b.id,
+        b.bill_no,
+        b.bill_period,
+        b.bill_amount,
+        b.paid_amount,
+        b.status,
+        b.pay_deadline,
+        b.pay_time,
+        b.create_time,
+        b.update_time,
+        o.owner_name,
+        o.owner_phone,
+        h.house_number,
+        bd.building_name,
+        f.item_name
+        FROM bill_info b
+        LEFT JOIN owner_info o ON b.owner_id = o.id AND o.is_deleted = 0
+        LEFT JOIN house_info h ON b.house_id = h.id AND h.is_deleted = 0
+        LEFT JOIN building_info bd ON h.building_id = bd.id AND bd.is_deleted = 0
+        LEFT JOIN fee_item f ON b.fee_item_id = f.id AND f.is_deleted = 0
+        WHERE b.is_deleted = 0
+        <if test="billNo != null and billNo != ''">
+            AND b.bill_no LIKE CONCAT('%', #{billNo}, '%')
+        </if>
+        <if test="ownerId != null">
+            AND b.owner_id = #{ownerId}
+        </if>
+        <if test="houseId != null">
+            AND b.house_id = #{houseId}
+        </if>
+        <if test="feeItemId != null">
+            AND b.fee_item_id = #{feeItemId}
+        </if>
+        <if test="status != null">
+            AND b.status = #{status}
+        </if>
+        <if test="billPeriod != null and billPeriod != ''">
+            AND b.bill_period LIKE CONCAT('%', #{billPeriod}, '%')
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND b.create_time >= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND b.create_time &lt;= #{endTime}
+        </if>
+        ORDER BY b.create_time DESC
+    </select>
 
-    <sql id="Base_Column_List">
-        id,bill_no,house_id,owner_id,fee_item_id,bill_period,
-        bill_amount,paid_amount,status,pay_deadline,pay_time,
-        pay_method,is_deleted,version,create_time,update_time,
-        create_user,update_user
-    </sql>
+    <!-- 查询账单详情 -->
+    <select id="selectBillDetail" resultType="java.util.HashMap">
+        SELECT
+            b.id,
+            b.bill_no,
+            b.owner_id,
+            o.owner_name,
+            o.owner_phone,
+            b.house_id,
+            h.house_number,
+            bd.building_name,
+            c.community_name,
+            b.fee_item_id,
+            f.item_name,
+            f.item_code,
+            b.bill_period,
+            b.bill_amount,
+            b.paid_amount,
+            b.status,
+            b.pay_deadline,
+            b.pay_time,
+            b.pay_method,
+            b.create_time,
+            b.update_time
+        FROM bill_info b
+                 LEFT JOIN owner_info o ON b.owner_id = o.id AND o.is_deleted = 0
+                 LEFT JOIN house_info h ON b.house_id = h.id AND h.is_deleted = 0
+                 LEFT JOIN building_info bd ON h.building_id = bd.id AND bd.is_deleted = 0
+                 LEFT JOIN community_info c ON bd.community_id = c.id AND c.is_deleted = 0
+                 LEFT JOIN fee_item f ON b.fee_item_id = f.id AND f.is_deleted = 0
+        WHERE b.id = #{billId} AND b.is_deleted = 0
+    </select>
 </mapper>

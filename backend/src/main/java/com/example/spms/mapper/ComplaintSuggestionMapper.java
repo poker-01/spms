@@ -15,8 +15,8 @@ import java.util.Map;
 /**
  * 投诉建议Mapper
  *
- * @Author SPMS
- * @Date 2026/07/05
+ * @author SPMS
+ * @date 2026/07/05
  */
 @Mapper
 public interface ComplaintSuggestionMapper extends BaseMapper<ComplaintSuggestion> {
@@ -27,7 +27,7 @@ public interface ComplaintSuggestionMapper extends BaseMapper<ComplaintSuggestio
     IPage<Map<String, Object>> selectComplaintPage(Page<?> page,
                                                     @Param("complaintNo") String complaintNo,
                                                     @Param("status") Integer status,
-                                                    @Param("type") Integer type,
+                                                    @Param("type") String type,
                                                     @Param("ownerId") Long ownerId,
                                                     @Param("startTime") String startTime,
                                                     @Param("endTime") String endTime);

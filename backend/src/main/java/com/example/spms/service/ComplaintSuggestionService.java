@@ -12,8 +12,8 @@ import com.example.spms.model.vo.ComplaintVO;
 /**
  * 投诉建议服务接口
  *
- * @Author SPMS
- * @Date 2026/07/05
+ * @author SPMS
+ * @date 2026/07/05
  */
 public interface ComplaintSuggestionService extends IService<ComplaintSuggestion> {
 

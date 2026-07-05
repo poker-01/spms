@@ -15,7 +15,7 @@ public class ComplaintQueryRequest {
 
     private Integer status;
 
-    private Integer type;
+    private String type;
 
     private Long ownerId;
 

@@ -3,7 +3,6 @@ package com.example.spms.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.example.spms.common.Page;
 import com.example.spms.exception.CustomException;
 import com.example.spms.mapper.CommunityInfoMapper;
 import com.example.spms.model.bo.CommunityQueryRequest;
