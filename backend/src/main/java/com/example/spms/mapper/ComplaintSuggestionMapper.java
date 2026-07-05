@@ -23,12 +23,12 @@ public interface ComplaintSuggestionMapper extends BaseMapper<ComplaintSuggestio
      * 分页查询投诉建议（关联业主、房屋信息）
      */
     IPage<Map<String, Object>> selectComplaintPage(Page<?> page,
-                                                   @Param("complaintNo") String complaintNo,
-                                                   @Param("status") Integer status,
-                                                   @Param("type") Integer type,
-                                                   @Param("ownerId") Long ownerId,
-                                                   @Param("startTime") String startTime,
-                                                   @Param("endTime") String endTime);
+                                                    @Param("complaintNo") String complaintNo,
+                                                    @Param("status") Integer status,
+                                                    @Param("type") Integer type,
+                                                    @Param("ownerId") Long ownerId,
+                                                    @Param("startTime") String startTime,
+                                                    @Param("endTime") String endTime);
 
     /**
      * 查询投诉建议详情

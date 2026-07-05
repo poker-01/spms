@@ -23,14 +23,14 @@ public interface RepairOrderMapper extends BaseMapper<RepairOrder> {
     /**
      * 分页查询报修工单（关联业主、房屋、维修人员信息）
      */
-    IPage<Map<String, Object>> selectRepairOrderPage(Page<?> page,
-                                                     @Param("orderNo") String orderNo,
-                                                     @Param("status") Integer status,
-                                                     @Param("repairType") Integer repairType,
-                                                     @Param("ownerId") Long ownerId,
-                                                     @Param("assigneeId") Long assigneeId,
-                                                     @Param("startTime") String startTime,
-                                                     @Param("endTime") String endTime);
+    IPage<Map<String, Object>> selectRepairOrderPage(Page<?> page, 
+                                                      @Param("orderNo") String orderNo,
+                                                      @Param("status") Integer status,
+                                                      @Param("repairType") Integer repairType,
+                                                      @Param("ownerId") Long ownerId,
+                                                      @Param("assigneeId") Long assigneeId,
+                                                      @Param("startTime") String startTime,
+                                                      @Param("endTime") String endTime);
 
     /**
      * 查询报修工单详情
