@@ -27,7 +27,7 @@ public interface ComplaintSuggestionMapper extends BaseMapper<ComplaintSuggestio
     IPage<Map<String, Object>> selectComplaintPage(Page<?> page,
                                                     @Param("complaintNo") String complaintNo,
                                                     @Param("status") Integer status,
-                                                    @Param("type") Integer type,
+                                                    @Param("type") String type,
                                                     @Param("ownerId") Long ownerId,
                                                     @Param("startTime") String startTime,
                                                     @Param("endTime") String endTime);

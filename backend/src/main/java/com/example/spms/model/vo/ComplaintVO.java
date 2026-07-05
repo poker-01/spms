@@ -23,7 +23,7 @@ public class ComplaintVO {
 
     private String houseNumber;
 
-    private Integer type;
+    private String type;
 
     private String typeName;
 

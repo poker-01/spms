@@ -15,7 +15,7 @@ public class RepairQueryRequest {
 
     private Integer status;
 
-    private Integer repairType;
+    private String repairType;
 
     private Long ownerId;
 

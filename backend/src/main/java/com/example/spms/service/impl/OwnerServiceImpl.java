@@ -348,6 +348,7 @@ public class OwnerServiceImpl extends ServiceImpl<OwnerInfoMapper, OwnerInfo>
         repair.setOrderNo(orderNo);
         repair.setHouseId(rel.getHouseInfoId());
         repair.setOwnerId(owner.getId());
+        repair.setRepairType(request.getRepairType());
         repair.setRepairDesc(request.getContent());
         repair.setRepairPhone(StringUtils.isNotBlank(request.getContactPhone())
                 ? request.getContactPhone() : owner.getOwnerPhone());
