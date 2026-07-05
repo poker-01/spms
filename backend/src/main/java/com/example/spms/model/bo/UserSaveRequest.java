@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * 新增用户请求
  */
@@ -24,4 +26,7 @@ public class UserSaveRequest {
 
     @NotNull(message = "状态不能为空")
     private Integer status;
+
+    /** 角色ID列表（创建时直接分配角色） */
+    private List<Long> roleIds;
 }

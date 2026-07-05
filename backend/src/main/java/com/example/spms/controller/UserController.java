@@ -7,6 +7,7 @@ import com.example.spms.model.bo.UserQueryRequest;
 import com.example.spms.model.bo.UserSaveRequest;
 import com.example.spms.model.bo.UserStatusRequest;
 import com.example.spms.model.bo.UserUpdateRequest;
+import com.example.spms.model.vo.UserDetailVO;
 import com.example.spms.model.vo.UserPageVO;
 import com.example.spms.service.SysUserInfoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,6 +42,20 @@ public class UserController {
     @PreAuthorize("hasAuthority('system:user:query')")
     public Result<Page<UserPageVO>> page(UserQueryRequest request) {
         return Result.success(sysUserInfoService.pageUsers(request));
+    }
+
+    @Operation(summary = "按角色查询用户列表（不分页，用于下拉选择）")
+    @GetMapping("/by-role/{roleId}")
+    @PreAuthorize("hasAuthority('system:user:query')")
+    public Result<List<UserPageVO>> listByRole(@PathVariable Long roleId) {
+        return Result.success(sysUserInfoService.listByRoleId(roleId));
+    }
+
+    @Operation(summary = "获取用户详情")
+    @GetMapping("/{userId}")
+    @PreAuthorize("hasAuthority('system:user:query')")
+    public Result<UserDetailVO> detail(@PathVariable Long userId) {
+        return Result.success(sysUserInfoService.getUserDetail(userId));
     }
 
     @Operation(summary = "新增用户")

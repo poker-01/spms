@@ -16,6 +16,7 @@ import com.example.spms.model.bo.UserUpdateRequest;
 import com.example.spms.model.po.SysRoleInfo;
 import com.example.spms.model.po.SysUserInfo;
 import com.example.spms.model.po.SysUserRole;
+import com.example.spms.model.vo.UserDetailVO;
 import com.example.spms.model.vo.UserPageVO;
 import com.example.spms.service.SysUserInfoService;
 import com.example.spms.mapper.SysUserInfoMapper;
@@ -50,7 +51,13 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
 
     @Override
     public Page<UserPageVO> pageUsers(UserQueryRequest request) {
-        LambdaQueryWrapper<SysUserInfo> wrapper = buildQueryWrapper(request);
+        // 如果指定了roleId，先查出该角色下的用户ID
+        List<Long> roleUserIds = getUserIdsByRoleId(request.getRoleId());
+        if (request.getRoleId() != null && roleUserIds.isEmpty()) {
+            return Page.empty(request.getPageNum(), request.getPageSize());
+        }
+
+        LambdaQueryWrapper<SysUserInfo> wrapper = buildQueryWrapper(request, roleUserIds);
         long total = baseMapper.selectCount(wrapper);
         long size = request.getPageSize();
         long current = request.getPageNum();
@@ -58,7 +65,7 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
 
         List<SysUserInfo> records = List.of();
         if (total > 0) {
-            LambdaQueryWrapper<SysUserInfo> pageWrapper = buildQueryWrapper(request);
+            LambdaQueryWrapper<SysUserInfo> pageWrapper = buildQueryWrapper(request, roleUserIds);
             pageWrapper.last("LIMIT " + offset + ", " + size);
             records = baseMapper.selectList(pageWrapper);
         }
@@ -86,7 +93,7 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
         return result;
     }
 
-    private LambdaQueryWrapper<SysUserInfo> buildQueryWrapper(UserQueryRequest request) {
+    private LambdaQueryWrapper<SysUserInfo> buildQueryWrapper(UserQueryRequest request, List<Long> roleUserIds) {
         LambdaQueryWrapper<SysUserInfo> wrapper = Wrappers.lambdaQuery();
         wrapper.eq(SysUserInfo::getIsDeleted, 0);
         if (StringUtils.hasText(request.getUserName())) {
@@ -98,8 +105,25 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
         if (request.getStatus() != null) {
             wrapper.eq(SysUserInfo::getStatus, request.getStatus());
         }
+        if (roleUserIds != null && !roleUserIds.isEmpty()) {
+            wrapper.in(SysUserInfo::getId, roleUserIds);
+        }
         wrapper.orderByDesc(SysUserInfo::getCreateTime);
         return wrapper;
+    }
+
+    /**
+     * 根据角色ID获取用户ID列表
+     */
+    private List<Long> getUserIdsByRoleId(Long roleId) {
+        if (roleId == null) {
+            return null;
+        }
+        List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
+                Wrappers.<SysUserRole>lambdaQuery()
+                        .eq(SysUserRole::getRoleInfoId, roleId)
+                        .eq(SysUserRole::getIsDeleted, 0));
+        return userRoles.stream().map(SysUserRole::getUserInfoId).toList();
     }
 
     private Map<Long, List<String>> queryRoleNamesByUserIds(List<Long> userIds) {
@@ -133,6 +157,16 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
         user.setEmail(request.getEmail());
         user.setStatus(request.getStatus());
         baseMapper.insert(user);
+
+        // 如果指定了角色，直接分配角色
+        if (!CollectionUtils.isEmpty(request.getRoleIds())) {
+            for (Long roleId : request.getRoleIds()) {
+                SysUserRole relation = new SysUserRole();
+                relation.setUserInfoId(user.getId());
+                relation.setRoleInfoId(roleId);
+                sysUserRoleMapper.insert(relation);
+            }
+        }
     }
 
     @Override
@@ -198,5 +232,59 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
                         .eq(SysUserRole::getUserInfoId, userId)
                         .eq(SysUserRole::getIsDeleted, 0));
         return list.stream().map(SysUserRole::getRoleInfoId).toList();
+    }
+
+    @Override
+    public List<UserPageVO> listByRoleId(Long roleId) {
+        List<Long> userIds = getUserIdsByRoleId(roleId);
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<SysUserInfo> users = baseMapper.selectBatchIds(userIds);
+        Map<Long, List<String>> roleNameMap = queryRoleNamesByUserIds(userIds);
+        return users.stream()
+                .filter(u -> u.getIsDeleted() == 0)
+                .map(user -> UserPageVO.builder()
+                        .id(user.getId())
+                        .userName(user.getUserName())
+                        .fullName(user.getFullName())
+                        .phoneNumber(user.getPhoneNumber())
+                        .email(user.getEmail())
+                        .status(user.getStatus())
+                        .createTime(user.getCreateTime())
+                        .roleNames(roleNameMap.getOrDefault(user.getId(), Collections.emptyList()))
+                        .build()).toList();
+    }
+
+    @Override
+    public UserDetailVO getUserDetail(Long userId) {
+        SysUserInfo user = baseMapper.selectById(userId);
+        if (user == null || user.getIsDeleted() == 1) {
+            throw new CustomException(ResultCode.USER_NOT_FOUND);
+        }
+        List<Long> roleIds = getUserRoleIds(userId);
+        List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
+                Wrappers.<SysUserRole>lambdaQuery()
+                        .eq(SysUserRole::getUserInfoId, userId)
+                        .eq(SysUserRole::getIsDeleted, 0));
+        Set<Long> rIds = userRoles.stream().map(SysUserRole::getRoleInfoId).collect(Collectors.toSet());
+        List<String> roleNames = Collections.emptyList();
+        if (!rIds.isEmpty()) {
+            roleNames = sysRoleInfoMapper.selectBatchIds(rIds).stream()
+                    .map(SysRoleInfo::getRoleName).toList();
+        }
+        return UserDetailVO.builder()
+                .id(user.getId())
+                .userName(user.getUserName())
+                .fullName(user.getFullName())
+                .phoneNumber(user.getPhoneNumber())
+                .email(user.getEmail())
+                .avatarAddress(user.getAvatarAddress())
+                .status(user.getStatus())
+                .createTime(user.getCreateTime())
+                .updateTime(user.getUpdateTime())
+                .roleIds(roleIds)
+                .roleNames(roleNames)
+                .build();
     }
 }

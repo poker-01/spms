@@ -14,6 +14,9 @@ public class UserQueryRequest {
 
     private Integer status;
 
+    /** 角色ID（按角色筛选） */
+    private Long roleId;
+
     private long pageNum = 1;
 
     private long pageSize = 10;

@@ -7,6 +7,7 @@ import com.example.spms.model.bo.UserSaveRequest;
 import com.example.spms.model.bo.UserStatusRequest;
 import com.example.spms.model.bo.UserUpdateRequest;
 import com.example.spms.model.po.SysUserInfo;
+import com.example.spms.model.vo.UserDetailVO;
 import com.example.spms.model.vo.UserPageVO;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -32,4 +33,14 @@ public interface SysUserInfoService extends IService<SysUserInfo> {
     void assignRoles(UserAssignRoleRequest request);
 
     List<Long> getUserRoleIds(Long userId);
+
+    /**
+     * 根据角色ID查询用户列表（不分页，用于下拉选择）
+     */
+    List<UserPageVO> listByRoleId(Long roleId);
+
+    /**
+     * 获取用户详情
+     */
+    UserDetailVO getUserDetail(Long userId);
 }
