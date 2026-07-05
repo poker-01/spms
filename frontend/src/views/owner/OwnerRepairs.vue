@@ -85,6 +85,27 @@
       </article>
     </div>
 
+    <!-- 分页 -->
+    <div v-if="total > 0" class="owner-page__pagination">
+      <button
+        class="btn btn-sm btn-ghost"
+        :disabled="(query.pageNum ?? 1) <= 1"
+        @click="changePage((query.pageNum ?? 1) - 1)"
+      >
+        上一页
+      </button>
+      <span class="pagination-info">
+        第 {{ query.pageNum ?? 1 }} / {{ totalPages }} 页，共 {{ total }} 条
+      </span>
+      <button
+        class="btn btn-sm btn-ghost"
+        :disabled="(query.pageNum ?? 1) >= totalPages"
+        @click="changePage((query.pageNum ?? 1) + 1)"
+      >
+        下一页
+      </button>
+    </div>
+
     <!-- 提交报修弹窗 -->
     <div v-if="dialogVisible" class="dialog-overlay" @click.self="dialogVisible = false">
       <div class="dialog dialog--repair">
@@ -136,54 +157,46 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { formatDate } from '@/utils/format'
 import { useRouter } from 'vue-router'
+import { formatDate } from '@/utils/format'
+import { getRepairPage, applyRepair, cancelRepair } from '@/api/repair'
+import type { RepairVO, RepairQuery } from '@/api/repair'
 
 defineOptions({
   name: 'OwnerRepairs',
 })
 
 // ============================================================
-// 类型定义
-// ============================================================
-
-interface RepairItem {
-  id: number
-  orderNo: string
-  repairType: number
-  repairTypeName: string
-  repairDesc: string
-  repairPhone: string
-  status: number
-  statusName: string
-  repairCost?: number
-  evaluateScore?: number
-  evaluateComment?: string
-  createTime: string
-  repairTime?: string
-}
-
-interface DictItem {
-  value: number
-  label: string
-}
-
-// ============================================================
 // 状态
 // ============================================================
 
+const router = useRouter()
 const loading = ref(false)
-const repairList = ref<RepairItem[]>([])
+const repairList = ref<RepairVO[]>([])
 const dialogVisible = ref(false)
 const submitting = ref(false)
+const total = ref(0)
+const totalPages = ref(1)
 
-// 字典数据
-const repairTypes = ref<DictItem[]>([])
-const statuses = ref<DictItem[]>([])
+// 报修类型（前端写死）
+const repairTypes = [
+  { value: 1, label: '水电维修' },
+  { value: 2, label: '家具维修' },
+  { value: 3, label: '家电维修' },
+  { value: 4, label: '其他' },
+]
+
+// 报修状态（前端写死）
+const statuses = [
+  { value: 0, label: '待处理' },
+  { value: 1, label: '处理中' },
+  { value: 2, label: '已完成' },
+  { value: 3, label: '已取消' },
+]
 
 // 查询参数
-const query = reactive({
-  status: undefined as number | undefined,
+const query = reactive<RepairQuery>({
+  status: undefined,
   keyword: '',
   pageNum: 1,
   pageSize: 10,
@@ -197,131 +210,38 @@ const form = reactive({
 })
 
 // ============================================================
-// Mock 数据
+// 辅助方法
 // ============================================================
 
-const mockRepairList: RepairItem[] = [
-  {
-    id: 1,
-    orderNo: 'BX20260705001',
-    repairType: 1,
-    repairTypeName: '水电维修',
-    repairDesc: '厨房水龙头漏水，需要更换',
-    repairPhone: '13800138001',
-    status: 0,
-    statusName: '待处理',
-    createTime: '2026-07-05 09:30:00',
-  },
-  {
-    id: 2,
-    orderNo: 'BX20260704002',
-    repairType: 3,
-    repairTypeName: '家电维修',
-    repairDesc: '空调不制冷，可能是缺氟',
-    repairPhone: '13800138002',
-    status: 1,
-    statusName: '处理中',
-    createTime: '2026-07-04 14:20:00',
-    repairTime: '2026-07-05 08:00:00',
-  },
-  {
-    id: 3,
-    orderNo: 'BX20260703003',
-    repairType: 2,
-    repairTypeName: '家具维修',
-    repairDesc: '卧室衣柜门铰链松动',
-    repairPhone: '13800138003',
-    status: 2,
-    statusName: '已完成',
-    createTime: '2026-07-03 10:15:00',
-    repairTime: '2026-07-04 16:30:00',
-    repairCost: 80,
-    evaluateScore: 5,
-    evaluateComment: '师傅技术很好，处理很快',
-  },
-  {
-    id: 4,
-    orderNo: 'BX20260702004',
-    repairType: 4,
-    repairTypeName: '其他',
-    repairDesc: '客厅吊灯闪烁，需要检查电路',
-    repairPhone: '13800138004',
-    status: 3,
-    statusName: '已取消',
-    createTime: '2026-07-02 08:45:00',
-  },
-]
+/** 获取当前页码（带默认值） */
+const getCurrentPage = (): number => {
+  return query.pageNum ?? 1
+}
+
+/** 获取每页大小（带默认值） */
+const getPageSize = (): number => {
+  return query.pageSize ?? 10
+}
 
 // ============================================================
 // 方法
 // ============================================================
 
 /**
- * 加载字典数据
- * 接口：GET /api/v1/dict/repair_type
- * 接口：GET /api/v1/dict/repair_status
- */
-const loadDict = async () => {
-  try {
-    // 接口：GET /api/v1/dict/repair_type
-    // const { data } = await getDict('repair_type')
-    // repairTypes.value = data
-
-    // 接口：GET /api/v1/dict/repair_status
-    // const { data } = await getDict('repair_status')
-    // statuses.value = data
-
-    // 临时Mock（后端接口完成后删除）
-    repairTypes.value = [
-      { value: 1, label: '水电维修' },
-      { value: 2, label: '家具维修' },
-      { value: 3, label: '家电维修' },
-      { value: 4, label: '其他' },
-    ]
-    statuses.value = [
-      { value: 0, label: '待处理' },
-      { value: 1, label: '处理中' },
-      { value: 2, label: '已完成' },
-      { value: 3, label: '已取消' },
-    ]
-  } catch (error) {
-    console.error('加载字典失败:', error)
-  }
-}
-
-/**
  * 加载报修列表
- * 接口：GET /api/v1/owner/repairs
  */
 const loadRepairs = async () => {
   loading.value = true
   try {
-    // 接口：GET /api/v1/owner/repairs
-    // 参数：{ status?, keyword?, pageNum?, pageSize? }
-    // const { data } = await getOwnerRepairs(query)
-    // repairList.value = data.records
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 300))
-
-    let data = [...mockRepairList]
-
-    // 状态筛选
-    if (query.status !== undefined) {
-      data = data.filter((item) => item.status === query.status)
-    }
-
-    // 关键词搜索
-    if (query.keyword) {
-      const kw = query.keyword.toLowerCase()
-      data = data.filter(
-        (item) =>
-          item.orderNo.toLowerCase().includes(kw) ||
-          item.repairDesc.includes(kw),
-      )
-    }
-
-    repairList.value = data
+    const { data } = await getRepairPage({
+      status: query.status,
+      keyword: query.keyword,
+      pageNum: getCurrentPage(),
+      pageSize: getPageSize(),
+    })
+    repairList.value = data.records
+    total.value = data.total
+    totalPages.value = data.pages
   } catch (error) {
     console.error('加载报修列表失败:', error)
   } finally {
@@ -331,7 +251,6 @@ const loadRepairs = async () => {
 
 /**
  * 提交报修
- * 接口：POST /api/v1/owner/repairs
  */
 const handleSubmit = async () => {
   if (!form.repairDesc.trim()) {
@@ -349,32 +268,16 @@ const handleSubmit = async () => {
 
   submitting.value = true
   try {
-    // 接口：POST /api/v1/owner/repairs
-    // 请求体：{ repairType, repairDesc, repairPhone }
-    // await applyRepair(form)
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 800))
-
-    const typeLabel = repairTypes.value.find((t) => t.value === form.repairType)?.label || '其他'
-    const newRepair: RepairItem = {
-      id: Date.now(),
-      orderNo: `BX${new Date().toISOString().slice(0, 10).replace(/-/g, '')}${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-      repairType: form.repairType,
-      repairTypeName: typeLabel,
-      repairDesc: form.repairDesc,
-      repairPhone: form.repairPhone,
-      status: 0,
-      statusName: '待处理',
-      createTime: new Date().toISOString().replace('T', ' ').slice(0, 19),
-    }
-
-    repairList.value = [newRepair, ...repairList.value]
+    // 后端期望的字段是 content 和 contactPhone
+    await applyRepair({
+      content: form.repairDesc.trim(),
+      contactPhone: form.repairPhone.trim(),
+    })
     dialogVisible.value = false
     form.repairType = 0
     form.repairDesc = ''
     form.repairPhone = ''
-
+    await loadRepairs()
     alert('报修提交成功！')
   } catch (error) {
     console.error('提交报修失败:', error)
@@ -386,22 +289,13 @@ const handleSubmit = async () => {
 
 /**
  * 取消报修
- * 接口：PUT /api/v1/owner/repairs/{id}/cancel
  */
-const handleCancel = async (item: RepairItem) => {
+const handleCancel = async (item: RepairVO) => {
   if (!confirm('确定要取消该报修单吗？')) return
 
   try {
-    // 接口：PUT /api/v1/owner/repairs/{id}/cancel
-    // await cancelRepair(item.id)
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    const target = repairList.value.find((r) => r.id === item.id)
-    if (target) {
-      target.status = 3
-      target.statusName = '已取消'
-    }
+    await cancelRepair(item.id)
+    await loadRepairs()
     alert('已取消报修')
   } catch (error) {
     console.error('取消报修失败:', error)
@@ -411,12 +305,18 @@ const handleCancel = async (item: RepairItem) => {
 
 /**
  * 查看详情
- * 接口：GET /api/v1/owner/repairs/{id}
  */
-const router = useRouter()
-
-const handleViewDetail = (item: RepairItem) => {
+const handleViewDetail = (item: RepairVO) => {
   router.push(`/owner/repairs/${item.id}`)
+}
+
+/**
+ * 切换页码
+ */
+const changePage = (page: number) => {
+  if (page < 1 || page > totalPages.value) return
+  query.pageNum = page
+  loadRepairs()
 }
 
 /**
@@ -447,7 +347,6 @@ const getStatusClass = (status: number): string => {
 // ============================================================
 
 onMounted(async () => {
-  await loadDict()
   await loadRepairs()
 })
 </script>
@@ -491,6 +390,20 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.owner-page__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 12px;
+}
+
+.pagination-info {
+  color: var(--color-text-secondary);
+  font-size: 14px;
 }
 
 .repair-card {

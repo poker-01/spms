@@ -1,3 +1,4 @@
+// src/api/repair.ts
 import request from '@/utils/request'
 import type { ApiResult } from '@/utils/api-types'
 
@@ -5,9 +6,6 @@ import type { ApiResult } from '@/utils/api-types'
 // 类型定义
 // ============================================================
 
-/**
- * 报修记录VO
- */
 export interface RepairVO {
   id: number
   orderNo: string
@@ -22,23 +20,20 @@ export interface RepairVO {
   evaluateComment?: string
   createTime: string
   repairTime?: string
+  ownerName?: string
+  repairerName?: string
+  repairerId?: number
 }
 
-/**
- * 报修查询参数
- * 添加索引签名以兼容 request 的 params 类型
- */
 export interface RepairQuery {
   status?: number
+  repairType?: number
   keyword?: string
   pageNum?: number
   pageSize?: number
   [key: string]: string | number | boolean | null | undefined
 }
 
-/**
- * 报修分页结果
- */
 export interface RepairPageResult {
   total: number
   pages: number
@@ -47,126 +42,165 @@ export interface RepairPageResult {
   records: RepairVO[]
 }
 
+// ============================================================
+// 请求体类型 - 与后端保持一致
+// ============================================================
+
 /**
- * 提交报修请求体
+ * 报修申请请求体
+ * 对应后端 RepairApplyRequest
  */
 export interface ApplyRepairDTO {
-  repairType: number
-  repairDesc: string
-  repairPhone: string
+  content: string        // ← 改为 content
+  contactPhone: string   // ← 改为 contactPhone
 }
 
 /**
- * 评价报修请求体
+ * 报修评价请求体
+ * 对应后端 RepairEvaluateRequest
  */
 export interface EvaluateRepairDTO {
+  orderId: number        // ← 改为 orderId
   score: number
   comment?: string
 }
 
 /**
  * 派单请求体
+ * 对应后端 RepairAssignRequest
  */
 export interface AssignRepairDTO {
-  repairerId: number
+  orderId: number        // ← 改为 orderId
+  assigneeId: number     // ← 改为 assigneeId
 }
 
 /**
  * 完成报修请求体
+ * 对应后端 RepairCompleteRequest
  */
 export interface CompleteRepairDTO {
-  repairCost: number
+  orderId: number        // ← 改为 orderId
+  repairCost?: number
+  repairResult?: string
 }
 
-// ============================================================
-// 业主端接口
-// ============================================================
-
 /**
- * 接口：GET /api/v1/owner/repairs
- * 功能：获取业主报修列表（分页）
- * 参数：{ status?, keyword?, pageNum?, pageSize? }
- * 返回：ApiResult<RepairPageResult>
+ * 用户信息（维修人员）
  */
-export const getOwnerRepairs = (params?: RepairQuery) => {
-  return request.get<RepairPageResult>('/api/v1/owner/repairs', { params })
+export interface RepairerInfo {
+  id: number
+  userName: string
+  fullName: string
+  phoneNumber?: string
+  roleNames?: string[]
+}
+
+// ============================================================
+// 用户/维修人员接口
+// ============================================================
+
+/**
+ * 接口：GET /api/v1/users/by-role/{roleId}
+ * 功能：按角色查询用户列表（不分页，用于下拉选择）
+ */
+export const getUsersByRole = (roleId: number) => {
+  return request.get<RepairerInfo[]>(`/api/v1/users/by-role/${roleId}`)
 }
 
 /**
- * 接口：POST /api/v1/owner/repairs
- * 功能：提交报修
- * 请求体：{ repairType, repairDesc, repairPhone }
- * 返回：ApiResult<{ id: number }>
+ * 接口：GET /api/v1/users/{userId}
+ * 功能：获取用户详情
+ */
+export const getUserDetail = (userId: number) => {
+  return request.get<RepairerInfo>(`/api/v1/users/${userId}`)
+}
+
+// ============================================================
+// 报修接口
+// ============================================================
+
+/**
+ * 接口：GET /api/v1/repairs/page
+ * 功能：分页查询报修列表
+ */
+export const getRepairPage = (params?: RepairQuery) => {
+  return request.get<RepairPageResult>('/api/v1/repairs/page', { params })
+}
+
+/**
+ * 接口：POST /api/v1/repairs
+ * 功能：提交报修申请
+ * 对应后端：RepairApplyRequest
+ * 字段：content, contactPhone
  */
 export const applyRepair = (data: ApplyRepairDTO) => {
-  return request.post<{ id: number }>('/api/v1/owner/repairs', data)
+  return request.post<{ id: number; orderNo: string }>('/api/v1/repairs', {
+    content: data.content,
+    contactPhone: data.contactPhone,
+  })
 }
 
 /**
- * 接口：PUT /api/v1/owner/repairs/{id}/cancel
- * 功能：取消报修（仅待处理状态可取消）
- * 返回：ApiResult<void>
+ * 接口：GET /api/v1/repairs/{orderId}
+ * 功能：查询报修详情
  */
-export const cancelRepair = (id: number) => {
-  return request.put<void>(`/api/v1/owner/repairs/${id}/cancel`)
+export const getRepairDetail = (orderId: number) => {
+  return request.get<RepairVO>(`/api/v1/repairs/${orderId}`)
 }
 
 /**
- * 接口：GET /api/v1/owner/repairs/{id}
- * 功能：获取报修详情
- * 返回：ApiResult<RepairVO>
+ * 接口：PUT /api/v1/repairs/assign
+ * 功能：派单给维修人员
+ * 对应后端：RepairAssignRequest
+ * 字段：orderId, assigneeId
  */
-export const getRepairDetail = (id: number) => {
-  return request.get<RepairVO>(`/api/v1/owner/repairs/${id}`)
+export const assignRepair = (data: AssignRepairDTO) => {
+  return request.put<void>('/api/v1/repairs/assign', {
+    orderId: data.orderId,
+    assigneeId: data.assigneeId,
+  })
 }
 
 /**
- * 接口：POST /api/v1/owner/repairs/{id}/evaluate
- * 功能：评价报修（仅已完成状态可评价）
- * 请求体：{ score, comment? }
- * 返回：ApiResult<void>
+ * 接口：PUT /api/v1/repairs/{orderId}/start
+ * 功能：开始处理报修
  */
-export const evaluateRepair = (id: number, data: EvaluateRepairDTO) => {
-  return request.post<void>(`/api/v1/owner/repairs/${id}/evaluate`, data)
-}
-
-// ============================================================
-// 管理端接口
-// ============================================================
-
-/**
- * 管理端报修查询参数
- */
-export interface AdminRepairQuery extends RepairQuery {
-  repairType?: number
+export const startRepair = (orderId: number) => {
+  return request.put<void>(`/api/v1/repairs/${orderId}/start`)
 }
 
 /**
- * 接口：GET /api/v1/admin/repairs
- * 功能：获取所有报修列表（管理端，含分页和筛选）
- * 参数：{ status?, repairType?, keyword?, pageNum?, pageSize? }
- * 返回：ApiResult<RepairPageResult>
+ * 接口：PUT /api/v1/repairs/complete
+ * 功能：确认维修完成
+ * 对应后端：RepairCompleteRequest
+ * 字段：orderId, repairCost, repairResult
  */
-export const getAdminRepairs = (params?: AdminRepairQuery) => {
-  return request.get<RepairPageResult>('/api/v1/admin/repairs', { params })
+export const completeRepair = (data: CompleteRepairDTO) => {
+  return request.put<void>('/api/v1/repairs/complete', {
+    orderId: data.orderId,
+    repairCost: data.repairCost,
+    repairResult: data.repairResult,
+  })
 }
 
 /**
- * 接口：PUT /api/v1/admin/repairs/{id}/assign
- * 功能：派单（分配维修人员）
- * 请求体：{ repairerId: number }
- * 返回：ApiResult<void>
+ * 接口：PUT /api/v1/repairs/evaluate
+ * 功能：业主评价报修
+ * 对应后端：RepairEvaluateRequest
+ * 字段：orderId, score, comment
  */
-export const assignRepair = (id: number, data: AssignRepairDTO) => {
-  return request.put<void>(`/api/v1/admin/repairs/${id}/assign`, data)
+export const evaluateRepair = (data: EvaluateRepairDTO) => {
+  return request.put<void>('/api/v1/repairs/evaluate', {
+    orderId: data.orderId,
+    score: data.score,
+    comment: data.comment,
+  })
 }
 
 /**
- * 接口：PUT /api/v1/admin/repairs/{id}/complete
- * 功能：完成报修（设置费用）
- * 请求体：{ repairCost: number }
- * 返回：ApiResult<void>
+ * 接口：PUT /api/v1/repairs/{orderId}/cancel
+ * 功能：取消报修
  */
-export const completeRepair = (id: number, data: CompleteRepairDTO) => {
-  return request.put<void>(`/api/v1/admin/repairs/${id}/complete`, data)
+export const cancelRepair = (orderId: number) => {
+  return request.put<void>(`/api/v1/repairs/${orderId}/cancel`)
 }

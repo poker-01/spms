@@ -152,30 +152,12 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
+import { getComplaintDetail, replyComplaint } from '@/api/complaint'
+import type { ComplaintVO } from '@/api/complaint'
 
 defineOptions({
   name: 'AdminComplaintDetail',
 })
-
-// ============================================================
-// 类型定义
-// ============================================================
-
-interface ComplaintDetail {
-  id: number
-  complaintNo: string
-  ownerName?: string
-  type: number
-  typeName: string
-  title: string
-  content: string
-  contactPhone?: string
-  status: number
-  statusName: string
-  replyContent?: string
-  replyTime?: string
-  createTime: string
-}
 
 // ============================================================
 // 状态
@@ -184,7 +166,7 @@ interface ComplaintDetail {
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
-const detail = ref<ComplaintDetail | null>(null)
+const detail = ref<ComplaintVO | null>(null)
 const showReplyDetail = ref(false)
 
 const replyDialog = reactive({
@@ -194,78 +176,16 @@ const replyDialog = reactive({
 })
 
 // ============================================================
-// Mock 数据
-// ============================================================
-
-const mockDetail: ComplaintDetail = {
-  id: 1,
-  complaintNo: 'TS20260705001',
-  ownerName: '张三',
-  type: 1,
-  typeName: '物业服务',
-  title: '楼道卫生不干净',
-  content: '最近一周楼道都没有人打扫，垃圾堆积，异味严重，希望物业尽快处理。',
-  contactPhone: '13800138001',
-  status: 0,
-  statusName: '待处理',
-  createTime: '2026-07-05 09:30:00',
-}
-
-const mockDetailProcessing: ComplaintDetail = {
-  id: 2,
-  complaintNo: 'TS20260704002',
-  ownerName: '李四',
-  type: 2,
-  typeName: '设施维修',
-  title: '小区路灯损坏',
-  content: '小区中心花园的路灯坏了三天了，晚上散步很不方便，请尽快维修。',
-  contactPhone: '13800138002',
-  status: 1,
-  statusName: '处理中',
-  createTime: '2026-07-04 14:20:00',
-}
-
-const mockDetailReplied: ComplaintDetail = {
-  id: 3,
-  complaintNo: 'TS20260703003',
-  ownerName: '王五',
-  type: 3,
-  typeName: '噪音扰民',
-  title: '邻居装修噪音过大',
-  content: '楼下邻居每天中午12-2点还在装修，严重影响休息，请协调处理。',
-  contactPhone: '13800138003',
-  status: 2,
-  statusName: '已回复',
-  createTime: '2026-07-03 10:15:00',
-  replyContent: '已联系业主协调，装修时间已调整为工作日上午8-12点，下午2-6点。',
-  replyTime: '2026-07-04 16:30:00',
-}
-
-const mockDetailCancelled: ComplaintDetail = {
-  id: 4,
-  complaintNo: 'TS20260702004',
-  ownerName: '赵六',
-  type: 4,
-  typeName: '其他',
-  title: '快递柜经常故障',
-  content: '小区快递柜最近经常显示故障，取不了快递，希望物业联系维修。',
-  contactPhone: '13800138004',
-  status: 3,
-  statusName: '已取消',
-  createTime: '2026-07-02 08:45:00',
-}
-
-// ============================================================
 // 方法
 // ============================================================
 
 /**
  * 加载投诉详情
- * 接口：GET /api/v1/admin/complaints/{id}
+ * 接口：GET /api/v1/complaints/{complaintId}
  */
 const loadDetail = async () => {
-  const id = Number(route.params.id)
-  if (!id) {
+  const complaintId = Number(route.params.id)
+  if (!complaintId) {
     alert('参数错误')
     router.back()
     return
@@ -273,23 +193,8 @@ const loadDetail = async () => {
 
   loading.value = true
   try {
-    // 接口：GET /api/v1/admin/complaints/{id}
-    // const { data } = await getAdminComplaintDetail(id)
-    // detail.value = data
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    if (id === 1) {
-      detail.value = mockDetail
-    } else if (id === 2) {
-      detail.value = mockDetailProcessing
-    } else if (id === 3) {
-      detail.value = mockDetailReplied
-    } else if (id === 4) {
-      detail.value = mockDetailCancelled
-    } else {
-      detail.value = { ...mockDetail, id }
-    }
+    const { data } = await getComplaintDetail(complaintId)
+    detail.value = data
   } catch (error) {
     console.error('加载投诉详情失败:', error)
     alert('加载失败，请稍后重试')
@@ -316,7 +221,7 @@ const openReplyDialog = () => {
 
 /**
  * 回复投诉
- * 接口：PUT /api/v1/admin/complaints/{id}/reply
+ * 接口：PUT /api/v1/complaints/reply
  */
 const handleReply = async () => {
   if (!detail.value) return
@@ -327,20 +232,11 @@ const handleReply = async () => {
 
   replyDialog.submitting = true
   try {
-    // 接口：PUT /api/v1/admin/complaints/{id}/reply
-    // 请求体：{ replyContent }
-    // await replyComplaint(detail.value.id, {
-    //   replyContent: replyDialog.content,
-    // })
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 800))
-
-    detail.value.status = 2
-    detail.value.statusName = '已回复'
-    detail.value.replyContent = replyDialog.content
-    detail.value.replyTime = new Date().toISOString().replace('T', ' ').slice(0, 19)
-
+    await replyComplaint({
+      complaintId: detail.value.id,
+      replyContent: replyDialog.content,
+    })
+    await loadDetail()
     replyDialog.visible = false
     alert('回复成功！')
   } catch (error) {

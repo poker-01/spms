@@ -139,39 +139,17 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
+import { getRepairDetail, cancelRepair, evaluateRepair } from '@/api/repair'
+import type { RepairVO } from '@/api/repair'
 
 defineOptions({
   name: 'OwnerRepairDetail',
 })
 
-// ============================================================
-// 类型定义
-// ============================================================
-
-interface RepairDetail {
-  id: number
-  orderNo: string
-  repairType: number
-  repairTypeName: string
-  repairDesc: string
-  repairPhone: string
-  status: number
-  statusName: string
-  repairCost?: number
-  evaluateScore?: number
-  evaluateComment?: string
-  createTime: string
-  repairTime?: string
-}
-
-// ============================================================
-// 状态
-// ============================================================
-
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
-const detail = ref<RepairDetail | null>(null)
+const detail = ref<RepairVO | null>(null)
 const showEvaluate = ref(false)
 const evaluating = ref(false)
 
@@ -180,30 +158,13 @@ const evaluateForm = reactive({
   comment: '',
 })
 
-// Mock 详情数据
-const mockDetail: RepairDetail = {
-  id: 1,
-  orderNo: 'BX20260705001',
-  repairType: 1,
-  repairTypeName: '水电维修',
-  repairDesc: '厨房水龙头漏水严重，需要更换新的水龙头，请尽快安排师傅上门维修。',
-  repairPhone: '13800138001',
-  status: 0,
-  statusName: '待处理',
-  createTime: '2026-07-05 09:30:00',
-}
-
-// ============================================================
-// 方法
-// ============================================================
-
 /**
  * 加载报修详情
- * 接口：GET /api/v1/owner/repairs/{id}
+ * 接口：GET /api/v1/repairs/{orderId}
  */
 const loadDetail = async () => {
-  const id = Number(route.params.id)
-  if (!id) {
+  const orderId = Number(route.params.id)
+  if (!orderId) {
     alert('参数错误')
     router.back()
     return
@@ -211,13 +172,8 @@ const loadDetail = async () => {
 
   loading.value = true
   try {
-    // 接口：GET /api/v1/owner/repairs/{id}
-    // const { data } = await getRepairDetail(id)
-    // detail.value = data
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    detail.value = { ...mockDetail, id }
+    const { data } = await getRepairDetail(orderId)
+    detail.value = data
   } catch (error) {
     console.error('加载报修详情失败:', error)
     alert('加载失败，请稍后重试')
@@ -227,27 +183,20 @@ const loadDetail = async () => {
   }
 }
 
-/**
- * 返回列表
- */
 const goBack = () => {
   router.push('/owner/repairs')
 }
 
 /**
  * 取消报修
- * 接口：PUT /api/v1/owner/repairs/{id}/cancel
+ * 接口：PUT /api/v1/repairs/{orderId}/cancel
  */
 const handleCancel = async () => {
   if (!detail.value) return
   if (!confirm('确定要取消该报修单吗？')) return
 
   try {
-    // 接口：PUT /api/v1/owner/repairs/{id}/cancel
-    // await cancelRepair(detail.value.id)
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    await cancelRepair(detail.value.id)
     detail.value.status = 3
     detail.value.statusName = '已取消'
     alert('已取消报修')
@@ -259,7 +208,7 @@ const handleCancel = async () => {
 
 /**
  * 提交评价
- * 接口：POST /api/v1/owner/repairs/{id}/evaluate
+ * 接口：PUT /api/v1/repairs/evaluate
  */
 const handleEvaluate = async () => {
   if (!detail.value) return
@@ -270,15 +219,11 @@ const handleEvaluate = async () => {
 
   evaluating.value = true
   try {
-    // 接口：POST /api/v1/owner/repairs/{id}/evaluate
-    // 请求体：{ score, comment }
-    // await evaluateRepair(detail.value.id, {
-    //   score: evaluateForm.score,
-    //   comment: evaluateForm.comment,
-    // })
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 800))
+    await evaluateRepair({
+      orderId: detail.value.id,
+      score: evaluateForm.score,
+      comment: evaluateForm.comment,
+    })
     detail.value.evaluateScore = evaluateForm.score
     detail.value.evaluateComment = evaluateForm.comment
     showEvaluate.value = false
@@ -291,9 +236,6 @@ const handleEvaluate = async () => {
   }
 }
 
-/**
- * 获取状态样式
- */
 const getStatusClass = (status: number): string => {
   const map: Record<number, string> = {
     0: 'status--warning',
@@ -304,13 +246,7 @@ const getStatusClass = (status: number): string => {
   return map[status] || ''
 }
 
-// ============================================================
-// 生命周期
-// ============================================================
-
-onMounted(() => {
-  loadDetail()
-})
+onMounted(loadDetail)
 </script>
 
 <style scoped>

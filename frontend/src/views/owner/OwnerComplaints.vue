@@ -74,6 +74,27 @@
       </article>
     </div>
 
+    <!-- 分页 -->
+    <div v-if="total > 0" class="owner-page__pagination">
+      <button
+        class="btn btn-sm btn-ghost"
+        :disabled="getCurrentPage() <= 1"
+        @click="changePage(getCurrentPage() - 1)"
+      >
+        上一页
+      </button>
+      <span class="pagination-info">
+        第 {{ getCurrentPage() }} / {{ totalPages }} 页，共 {{ total }} 条
+      </span>
+      <button
+        class="btn btn-sm btn-ghost"
+        :disabled="getCurrentPage() >= totalPages"
+        @click="changePage(getCurrentPage() + 1)"
+      >
+        下一页
+      </button>
+    </div>
+
     <!-- 提交投诉弹窗 -->
     <div v-if="dialogVisible" class="dialog-overlay" @click.self="dialogVisible = false">
       <div class="dialog dialog--complaint">
@@ -136,34 +157,12 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
+import { getComplaintPage, applyComplaint, cancelComplaint } from '@/api/complaint'
+import type { ComplaintVO, ComplaintQuery } from '@/api/complaint'
 
 defineOptions({
   name: 'OwnerComplaints',
 })
-
-// ============================================================
-// 类型定义
-// ============================================================
-
-interface ComplaintItem {
-  id: number
-  complaintNo: string
-  type: number
-  typeName: string
-  title: string
-  content: string
-  contactPhone?: string
-  status: number
-  statusName: string
-  replyContent?: string
-  replyTime?: string
-  createTime: string
-}
-
-interface DictItem {
-  value: number
-  label: string
-}
 
 // ============================================================
 // 状态
@@ -171,18 +170,35 @@ interface DictItem {
 
 const router = useRouter()
 const loading = ref(false)
-const list = ref<ComplaintItem[]>([])
+const list = ref<ComplaintVO[]>([])
 const dialogVisible = ref(false)
 const submitting = ref(false)
+const total = ref(0)
+const totalPages = ref(1)
 
-// 字典数据
-const types = ref<DictItem[]>([])
-const statuses = ref<DictItem[]>([])
+// 投诉类型（前端写死）
+const types = [
+  { value: 1, label: '物业服务' },
+  { value: 2, label: '设施维修' },
+  { value: 3, label: '噪音扰民' },
+  { value: 4, label: '其他' },
+]
+
+// 投诉状态（前端写死）
+const statuses = [
+  { value: 0, label: '待处理' },
+  { value: 1, label: '处理中' },
+  { value: 2, label: '已回复' },
+  { value: 3, label: '已关闭' },
+  { value: 4, label: '已取消' },
+]
 
 // 查询参数
-const query = reactive({
-  status: undefined as number | undefined,
+const query = reactive<ComplaintQuery>({
+  status: undefined,
   keyword: '',
+  pageNum: 1,
+  pageSize: 10,
 })
 
 // 提交表单
@@ -194,128 +210,38 @@ const form = reactive({
 })
 
 // ============================================================
-// Mock 数据
+// 辅助方法
 // ============================================================
 
-const mockList: ComplaintItem[] = [
-  {
-    id: 1,
-    complaintNo: 'TS20260705001',
-    type: 1,
-    typeName: '物业服务',
-    title: '楼道卫生不干净',
-    content: '最近一周楼道都没有人打扫，垃圾堆积，异味严重，希望物业尽快处理。',
-    contactPhone: '13800138001',
-    status: 0,
-    statusName: '待处理',
-    createTime: '2026-07-05 09:30:00',
-  },
-  {
-    id: 2,
-    complaintNo: 'TS20260704002',
-    type: 2,
-    typeName: '设施维修',
-    title: '小区路灯损坏',
-    content: '小区中心花园的路灯坏了三天了，晚上散步很不方便，请尽快维修。',
-    contactPhone: '13800138002',
-    status: 1,
-    statusName: '处理中',
-    createTime: '2026-07-04 14:20:00',
-  },
-  {
-    id: 3,
-    complaintNo: 'TS20260703003',
-    type: 3,
-    typeName: '噪音扰民',
-    title: '邻居装修噪音过大',
-    content: '楼下邻居每天中午12-2点还在装修，严重影响休息，请协调处理。',
-    contactPhone: '13800138003',
-    status: 2,
-    statusName: '已回复',
-    createTime: '2026-07-03 10:15:00',
-    replyContent: '已联系业主协调，装修时间已调整为工作日上午8-12点，下午2-6点。',
-    replyTime: '2026-07-04 16:30:00',
-  },
-  {
-    id: 4,
-    complaintNo: 'TS20260702004',
-    type: 4,
-    typeName: '其他',
-    title: '快递柜经常故障',
-    content: '小区快递柜最近经常显示故障，取不了快递，希望物业联系维修。',
-    contactPhone: '13800138004',
-    status: 3,
-    statusName: '已取消',
-    createTime: '2026-07-02 08:45:00',
-  },
-]
+/** 获取当前页码（带默认值） */
+const getCurrentPage = (): number => {
+  return query.pageNum ?? 1
+}
+
+/** 获取每页大小（带默认值） */
+const getPageSize = (): number => {
+  return query.pageSize ?? 10
+}
 
 // ============================================================
 // 方法
 // ============================================================
 
 /**
- * 加载字典数据
- * 接口：GET /api/v1/dict/complaint_type
- * 接口：GET /api/v1/dict/complaint_status
- */
-const loadDict = async () => {
-  try {
-    // 接口：GET /api/v1/dict/complaint_type
-    // const { data } = await getDict('complaint_type')
-    // types.value = data
-
-    // 接口：GET /api/v1/dict/complaint_status
-    // const { data } = await getDict('complaint_status')
-    // statuses.value = data
-
-    // 临时Mock（后端接口完成后删除）
-    types.value = [
-      { value: 1, label: '物业服务' },
-      { value: 2, label: '设施维修' },
-      { value: 3, label: '噪音扰民' },
-      { value: 4, label: '其他' },
-    ]
-    statuses.value = [
-      { value: 0, label: '待处理' },
-      { value: 1, label: '处理中' },
-      { value: 2, label: '已回复' },
-      { value: 3, label: '已取消' },
-    ]
-  } catch (error) {
-    console.error('加载字典失败:', error)
-  }
-}
-
-/**
  * 加载投诉列表
- * 接口：GET /api/v1/owner/complaints
  */
 const loadData = async () => {
   loading.value = true
   try {
-    // 接口：GET /api/v1/owner/complaints
-    // 参数：{ status?, keyword? }
-    // const { data } = await getOwnerComplaints(query)
-    // list.value = data
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 300))
-
-    let data = [...mockList]
-    if (query.status !== undefined) {
-      data = data.filter((item) => item.status === query.status)
-    }
-    if (query.keyword) {
-      const kw = query.keyword.toLowerCase()
-      data = data.filter(
-        (item) =>
-          item.title.includes(kw) ||
-          item.content.includes(kw) ||
-          item.complaintNo.toLowerCase().includes(kw),
-      )
-    }
-    list.value = data
+    const { data } = await getComplaintPage({
+      status: query.status,
+      keyword: query.keyword,
+      pageNum: getCurrentPage(),
+      pageSize: getPageSize(),
+    })
+    list.value = data.records
+    total.value = data.total
+    totalPages.value = data.pages
   } catch (error) {
     console.error('加载投诉列表失败:', error)
   } finally {
@@ -325,7 +251,6 @@ const loadData = async () => {
 
 /**
  * 提交投诉
- * 接口：POST /api/v1/owner/complaints
  */
 const handleSubmit = async () => {
   if (!form.type) {
@@ -343,34 +268,18 @@ const handleSubmit = async () => {
 
   submitting.value = true
   try {
-    // 接口：POST /api/v1/owner/complaints
-    // 请求体：{ type, title, content, contactPhone }
-    // await applyComplaint(form)
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 800))
-
-    const typeLabel = types.value.find((t) => t.value === form.type)?.label || '其他'
-    const newItem: ComplaintItem = {
-      id: Date.now(),
-      complaintNo: `TS${new Date().toISOString().slice(0, 10).replace(/-/g, '')}${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+    await applyComplaint({
       type: form.type,
-      typeName: typeLabel,
       title: form.title,
       content: form.content,
       contactPhone: form.contactPhone,
-      status: 0,
-      statusName: '待处理',
-      createTime: new Date().toISOString().replace('T', ' ').slice(0, 19),
-    }
-
-    list.value = [newItem, ...list.value]
+    })
     dialogVisible.value = false
     form.type = 0
     form.title = ''
     form.content = ''
     form.contactPhone = ''
-
+    await loadData()
     alert('投诉提交成功！')
   } catch (error) {
     console.error('提交投诉失败:', error)
@@ -382,22 +291,13 @@ const handleSubmit = async () => {
 
 /**
  * 取消投诉
- * 接口：PUT /api/v1/owner/complaints/{id}/cancel
  */
-const handleCancel = async (item: ComplaintItem) => {
+const handleCancel = async (item: ComplaintVO) => {
   if (!confirm('确定要取消该投诉吗？')) return
 
   try {
-    // 接口：PUT /api/v1/owner/complaints/{id}/cancel
-    // await cancelComplaint(item.id)
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    const target = list.value.find((r) => r.id === item.id)
-    if (target) {
-      target.status = 3
-      target.statusName = '已取消'
-    }
+    await cancelComplaint(item.id)
+    await loadData()
     alert('已取消投诉')
   } catch (error) {
     console.error('取消投诉失败:', error)
@@ -408,8 +308,17 @@ const handleCancel = async (item: ComplaintItem) => {
 /**
  * 查看详情
  */
-const handleViewDetail = (item: ComplaintItem) => {
+const handleViewDetail = (item: ComplaintVO) => {
   router.push(`/owner/complaints/${item.id}`)
+}
+
+/**
+ * 切换页码
+ */
+const changePage = (page: number) => {
+  if (page < 1 || page > totalPages.value) return
+  query.pageNum = page
+  loadData()
 }
 
 /**
@@ -418,6 +327,7 @@ const handleViewDetail = (item: ComplaintItem) => {
 const handleReset = () => {
   query.status = undefined
   query.keyword = ''
+  query.pageNum = 1
   loadData()
 }
 
@@ -430,6 +340,7 @@ const getStatusClass = (status: number): string => {
     1: 'status--primary',
     2: 'status--success',
     3: 'status--info',
+    4: 'status--info',
   }
   return map[status] || ''
 }
@@ -439,10 +350,11 @@ const getStatusClass = (status: number): string => {
 // ============================================================
 
 onMounted(async () => {
-  await loadDict()
   await loadData()
 })
 </script>
+
+<!-- template 和 style 保持不变，不需要修改 -->
 
 <style scoped>
 .owner-page__header {
@@ -483,6 +395,20 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.owner-page__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 12px;
+}
+
+.pagination-info {
+  color: var(--color-text-secondary);
+  font-size: 14px;
 }
 
 .complaint-card {

@@ -2,7 +2,11 @@
 import request from '@/utils/request'
 import type { ApiResult } from '@/utils/api-types'
 
-export interface ComplaintItem {
+// ============================================================
+// 类型定义
+// ============================================================
+
+export interface ComplaintVO {
   id: number
   complaintNo: string
   ownerName?: string
@@ -32,36 +36,69 @@ export interface ComplaintPageResult {
   pages: number
   current: number
   size: number
-  records: ComplaintItem[]
+  records: ComplaintVO[]
 }
 
-// ===== 业主端 =====
-export const getOwnerComplaints = (params?: ComplaintQuery) => {
-  return request.get<ComplaintPageResult>('/api/v1/owner/complaints', { params })
-}
-
-export const applyComplaint = (data: {
+export interface ApplyComplaintDTO {
   type: number
   title: string
   content: string
   contactPhone?: string
-}) => {
-  return request.post<{ id: number }>('/api/v1/owner/complaints', data)
 }
 
+export interface ReplyComplaintDTO {
+  complaintId: number
+  replyContent: string
+}
+
+// ============================================================
+// 接口定义
+// ============================================================
+
+/**
+ * 接口：GET /api/v1/complaints/page
+ * 功能：分页查询投诉列表（支持状态筛选）
+ */
+export const getComplaintPage = (params?: ComplaintQuery) => {
+  return request.get<ComplaintPageResult>('/api/v1/complaints/page', { params })
+}
+
+/**
+ * 接口：POST /api/v1/owner/complaints
+ * 功能：提交投诉建议
+ */
+export const applyComplaint = (data: ApplyComplaintDTO) => {
+  return request.post<{ id: number; complaintNo: string }>('/api/v1/owner/complaints', data)
+}
+
+/**
+ * 接口：GET /api/v1/complaints/{complaintId}
+ * 功能：查询投诉详情
+ */
+export const getComplaintDetail = (complaintId: number) => {
+  return request.get<ComplaintVO>(`/api/v1/complaints/${complaintId}`)
+}
+
+/**
+ * 接口：PUT /api/v1/complaints/reply
+ * 功能：物业端回复投诉
+ */
+export const replyComplaint = (data: ReplyComplaintDTO) => {
+  return request.put<void>('/api/v1/complaints/reply', data)
+}
+
+/**
+ * 接口：PUT /api/v1/complaint/{complaintId}/close
+ * 功能：关闭投诉
+ */
+export const closeComplaint = (complaintId: number) => {
+  return request.put<void>(`/api/v1/complaint/${complaintId}/close`)
+}
+
+/**
+ * 接口：PUT /api/v1/owner/complaints/{id}/cancel
+ * 功能：取消投诉（业主端）
+ */
 export const cancelComplaint = (id: number) => {
   return request.put<void>(`/api/v1/owner/complaints/${id}/cancel`)
-}
-
-export const getComplaintDetail = (id: number) => {
-  return request.get<ComplaintItem>(`/api/v1/owner/complaints/${id}`)
-}
-
-// ===== 管理端 =====
-export const getAdminComplaints = (params?: ComplaintQuery) => {
-  return request.get<ComplaintPageResult>('/api/v1/admin/complaints', { params })
-}
-
-export const replyComplaint = (id: number, data: { replyContent: string }) => {
-  return request.put<void>(`/api/v1/admin/complaints/${id}/reply`, data)
 }

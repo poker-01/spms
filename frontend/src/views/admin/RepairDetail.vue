@@ -232,6 +232,8 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
+import { getRepairDetail, assignRepair, completeRepair } from '@/api/repair'
+import type { RepairVO } from '@/api/repair'
 
 defineOptions({
   name: 'AdminRepairDetail',
@@ -241,22 +243,7 @@ defineOptions({
 // 类型定义
 // ============================================================
 
-interface RepairDetail {
-  id: number
-  orderNo: string
-  ownerName?: string
-  repairType: number
-  repairTypeName: string
-  repairDesc: string
-  repairPhone: string
-  status: number
-  statusName: string
-  repairCost?: number
-  evaluateScore?: number
-  evaluateComment?: string
-  createTime: string
-  repairTime?: string
-  repairerName?: string
+interface RepairDetail extends RepairVO {
   logs?: Array<{
     time: string
     content: string
@@ -297,81 +284,16 @@ const completeDialog = reactive({
 })
 
 // ============================================================
-// Mock 数据
-// ============================================================
-
-const mockDetail: RepairDetail = {
-  id: 1,
-  orderNo: 'BX20260705001',
-  ownerName: '张三',
-  repairType: 1,
-  repairTypeName: '水电维修',
-  repairDesc: '厨房水龙头漏水严重，需要更换新的水龙头，请尽快安排师傅上门维修。',
-  repairPhone: '13800138001',
-  status: 0,
-  statusName: '待处理',
-  createTime: '2026-07-05 09:30:00',
-  logs: [
-    { time: '2026-07-05 09:30:00', content: '业主提交报修申请', operator: '张三' },
-  ],
-}
-
-const mockDetailProcessing: RepairDetail = {
-  id: 2,
-  orderNo: 'BX20260704002',
-  ownerName: '李四',
-  repairType: 3,
-  repairTypeName: '家电维修',
-  repairDesc: '空调不制冷，可能是缺氟，需要加氟并检查管路。',
-  repairPhone: '13800138002',
-  status: 1,
-  statusName: '处理中',
-  createTime: '2026-07-04 14:20:00',
-  repairTime: '2026-07-05 08:00:00',
-  repairerName: '张师傅',
-  logs: [
-    { time: '2026-07-04 14:20:00', content: '业主提交报修申请', operator: '李四' },
-    { time: '2026-07-05 08:30:00', content: '派单给维修师傅：张师傅', operator: '管理员' },
-    { time: '2026-07-05 09:00:00', content: '维修师傅接单，正在前往', operator: '张师傅' },
-  ],
-}
-
-const mockDetailCompleted: RepairDetail = {
-  id: 3,
-  orderNo: 'BX20260703003',
-  ownerName: '王五',
-  repairType: 2,
-  repairTypeName: '家具维修',
-  repairDesc: '卧室衣柜门铰链松动，需要加固或更换铰链。',
-  repairPhone: '13800138003',
-  status: 2,
-  statusName: '已完成',
-  createTime: '2026-07-03 10:15:00',
-  repairTime: '2026-07-04 16:30:00',
-  repairCost: 80,
-  evaluateScore: 5,
-  evaluateComment: '师傅技术很好，处理很快，服务态度也很好！',
-  repairerName: '李师傅',
-  logs: [
-    { time: '2026-07-03 10:15:00', content: '业主提交报修申请', operator: '王五' },
-    { time: '2026-07-03 14:00:00', content: '派单给维修师傅：李师傅', operator: '管理员' },
-    { time: '2026-07-04 09:00:00', content: '维修师傅开始维修', operator: '李师傅' },
-    { time: '2026-07-04 16:30:00', content: '维修完成，费用 80.00 元', operator: '管理员' },
-    { time: '2026-07-05 10:00:00', content: '业主评价：5星 - 师傅技术很好', operator: '王五' },
-  ],
-}
-
-// ============================================================
 // 方法
 // ============================================================
 
 /**
  * 加载报修详情
- * 接口：GET /api/v1/admin/repairs/{id}
+ * 接口：GET /api/v1/repairs/{orderId}
  */
 const loadDetail = async () => {
-  const id = Number(route.params.id)
-  if (!id) {
+  const orderId = Number(route.params.id)
+  if (!orderId) {
     alert('参数错误')
     router.back()
     return
@@ -379,22 +301,8 @@ const loadDetail = async () => {
 
   loading.value = true
   try {
-    // 接口：GET /api/v1/admin/repairs/{id}
-    // const { data } = await getAdminRepairDetail(id)
-    // detail.value = data
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    // 根据id返回不同的mock数据
-    if (id === 1) {
-      detail.value = mockDetail
-    } else if (id === 2) {
-      detail.value = mockDetailProcessing
-    } else if (id === 3) {
-      detail.value = mockDetailCompleted
-    } else {
-      detail.value = { ...mockDetail, id }
-    }
+    const { data } = await getRepairDetail(orderId)
+    detail.value = data as RepairDetail
   } catch (error) {
     console.error('加载报修详情失败:', error)
     alert('加载失败，请稍后重试')
@@ -406,15 +314,14 @@ const loadDetail = async () => {
 
 /**
  * 加载维修人员列表
- * 接口：GET /api/v1/admin/repairers
  */
 const loadRepairers = async () => {
   try {
-    // 接口：GET /api/v1/admin/repairers
+    // 接口：GET /api/v1/users/repairers
     // const { data } = await getRepairers()
     // repairers.value = data
 
-    // 临时Mock（后端接口完成后删除）
+    // 临时数据，等待后端接口
     repairers.value = [
       { id: 1, userName: 'repairer1', fullName: '张师傅' },
       { id: 2, userName: 'repairer2', fullName: '李师傅' },
@@ -442,7 +349,7 @@ const openAssignDialog = () => {
 
 /**
  * 派单
- * 接口：PUT /api/v1/admin/repairs/{id}/assign
+ * 接口：PUT /api/v1/repairs/assign
  */
 const handleAssign = async () => {
   if (!detail.value) return
@@ -453,25 +360,11 @@ const handleAssign = async () => {
 
   assignDialog.submitting = true
   try {
-    // 接口：PUT /api/v1/admin/repairs/{id}/assign
-    // 请求体：{ repairerId }
-    // await assignRepair(detail.value.id, {
-    //   repairerId: assignDialog.repairerId,
-    // })
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 800))
-
-    const repairer = repairers.value.find((r) => r.id === assignDialog.repairerId)
-    detail.value.status = 1
-    detail.value.statusName = '处理中'
-    detail.value.repairerName = repairer?.fullName || repairer?.userName || '维修师傅'
-    detail.value.logs?.push({
-      time: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      content: `派单给维修师傅：${detail.value.repairerName}`,
-      operator: '管理员',
+    await assignRepair({
+      orderId: detail.value.id,
+      repairerId: assignDialog.repairerId,
     })
-
+    await loadDetail()
     assignDialog.visible = false
     alert('派单成功！')
   } catch (error) {
@@ -493,7 +386,7 @@ const openCompleteDialog = () => {
 
 /**
  * 完成报修
- * 接口：PUT /api/v1/admin/repairs/{id}/complete
+ * 接口：PUT /api/v1/repairs/complete
  */
 const handleComplete = async () => {
   if (!detail.value) return
@@ -504,26 +397,11 @@ const handleComplete = async () => {
 
   completeDialog.submitting = true
   try {
-    // 接口：PUT /api/v1/admin/repairs/{id}/complete
-    // 请求体：{ repairCost, remark? }
-    // await completeRepair(detail.value.id, {
-    //   repairCost: completeDialog.repairCost,
-    //   remark: completeDialog.remark,
-    // })
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 800))
-
-    detail.value.status = 2
-    detail.value.statusName = '已完成'
-    detail.value.repairCost = completeDialog.repairCost
-    detail.value.repairTime = new Date().toISOString().replace('T', ' ').slice(0, 19)
-    detail.value.logs?.push({
-      time: detail.value.repairTime,
-      content: `维修完成，费用 ${completeDialog.repairCost.toFixed(2)} 元${completeDialog.remark ? '，备注：' + completeDialog.remark : ''}`,
-      operator: '管理员',
+    await completeRepair({
+      orderId: detail.value.id,
+      repairCost: completeDialog.repairCost,
     })
-
+    await loadDetail()
     completeDialog.visible = false
     alert('报修已完成！')
   } catch (error) {

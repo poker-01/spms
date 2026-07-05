@@ -1,3 +1,4 @@
+<!-- src/views/owner/OwnerComplaintDetail.vue -->
 <template>
   <div class="detail-page">
     <div class="detail-page__back">
@@ -74,80 +75,80 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
+import { getComplaintDetail, cancelComplaint } from '@/api/complaint'
+import type { ComplaintVO } from '@/api/complaint'
 
 defineOptions({
   name: 'OwnerComplaintDetail',
 })
 
-interface ComplaintDetail {
-  id: number
-  complaintNo: string
-  type: number
-  typeName: string
-  title: string
-  content: string
-  contactPhone?: string
-  status: number
-  statusName: string
-  replyContent?: string
-  replyTime?: string
-  createTime: string
-}
+// ============================================================
+// 状态
+// ============================================================
 
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
-const detail = ref<ComplaintDetail | null>(null)
+const detail = ref<ComplaintVO | null>(null)
 
-const mockDetail: ComplaintDetail = {
-  id: 1,
-  complaintNo: 'TS20260705001',
-  type: 1,
-  typeName: '物业服务',
-  title: '楼道卫生不干净',
-  content: '最近一周楼道都没有人打扫，垃圾堆积，异味严重，希望物业尽快处理。',
-  contactPhone: '13800138001',
-  status: 0,
-  statusName: '待处理',
-  createTime: '2026-07-05 09:30:00',
-}
+// ============================================================
+// 方法
+// ============================================================
 
+/**
+ * 加载投诉详情
+ * 接口：GET /api/v1/complaints/{complaintId}
+ */
 const loadDetail = async () => {
-  const id = Number(route.params.id)
-  if (!id) { alert('参数错误'); router.back(); return }
+  const complaintId = Number(route.params.id)
+  if (!complaintId) {
+    alert('参数错误')
+    router.back()
+    return
+  }
 
   loading.value = true
   try {
-    // 接口：GET /api/v1/owner/complaints/{id}
-    // const { data } = await getComplaintDetail(id)
-    // detail.value = data
-
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    detail.value = { ...mockDetail, id }
+    const { data } = await getComplaintDetail(complaintId)
+    detail.value = data
   } catch (error) {
-    console.error('加载失败:', error)
-    alert('加载失败')
+    console.error('加载投诉详情失败:', error)
+    alert('加载失败，请稍后重试')
     router.back()
   } finally {
     loading.value = false
   }
 }
 
-const goBack = () => router.push('/owner/complaints')
+/**
+ * 返回列表
+ */
+const goBack = () => {
+  router.push('/owner/complaints')
+}
 
+/**
+ * 取消投诉
+ * 接口：PUT /api/v1/owner/complaints/{id}/cancel
+ */
 const handleCancel = async () => {
-  if (!detail.value || !confirm('确定取消吗？')) return
+  if (!detail.value) return
+  if (!confirm('确定取消该投诉吗？')) return
+
   try {
-    // 接口：PUT /api/v1/owner/complaints/{id}/cancel
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    await cancelComplaint(detail.value.id)
     detail.value.status = 3
     detail.value.statusName = '已取消'
     alert('已取消投诉')
   } catch (error) {
-    alert('取消失败')
+    console.error('取消投诉失败:', error)
+    alert('取消失败，请稍后重试')
   }
 }
 
+/**
+ * 获取状态样式
+ */
 const getStatusClass = (status: number): string => {
   const map: Record<number, string> = {
     0: 'status--warning',
@@ -158,7 +159,13 @@ const getStatusClass = (status: number): string => {
   return map[status] || ''
 }
 
-onMounted(loadDetail)
+// ============================================================
+// 生命周期
+// ============================================================
+
+onMounted(() => {
+  loadDetail()
+})
 </script>
 
 <style scoped>
@@ -166,14 +173,17 @@ onMounted(loadDetail)
   max-width: 900px;
   margin: 0 auto;
 }
+
 .detail-page__back {
   margin-bottom: 20px;
 }
+
 .detail-page__loading {
   padding: 60px 20px;
   text-align: center;
   color: var(--color-text-secondary);
 }
+
 .detail-page__header {
   display: flex;
   align-items: center;
@@ -186,15 +196,18 @@ onMounted(loadDetail)
   background: var(--color-card);
   border: 1px solid var(--color-border);
 }
+
 .detail-page__header-left {
   display: flex;
   align-items: center;
   gap: 16px;
 }
+
 .detail-page__title {
   margin: 0;
   font-size: 20px;
 }
+
 .detail-page__status {
   display: inline-flex;
   padding: 4px 14px;
@@ -202,10 +215,12 @@ onMounted(loadDetail)
   font-size: 14px;
   font-weight: 600;
 }
+
 .detail-page__order {
   color: var(--color-text-secondary);
   font-size: 14px;
 }
+
 .status--warning {
   background: #fef3c7;
   color: #d97706;
@@ -222,57 +237,69 @@ onMounted(loadDetail)
   background: #f1f5f9;
   color: #64748b;
 }
+
 .detail-page__body {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
+
 .detail-card {
   padding: 24px;
   border-radius: var(--radius-lg);
   background: var(--color-card);
   border: 1px solid var(--color-border);
 }
+
 .detail-card--reply {
   background: #ecfdf5;
   border-color: #6ee7b7;
 }
+
 .detail-card--cancelled {
   background: #fef2f2;
   border-color: #fca5a5;
 }
+
 .detail-card__title {
   margin: 0 0 16px;
   font-size: 16px;
 }
+
 .detail-card__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px 24px;
 }
+
 .detail-card__item {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
+
 .detail-card__item label {
   font-size: 13px;
   color: var(--color-text-secondary);
 }
+
 .detail-card__item span {
   font-weight: 500;
 }
+
 .detail-card__desc {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--color-border);
 }
+
 .detail-card__desc label {
   display: block;
   margin-bottom: 8px;
   font-size: 13px;
   color: var(--color-text-secondary);
 }
+
 .detail-card__desc p {
   margin: 0;
   padding: 12px 16px;
@@ -280,15 +307,18 @@ onMounted(loadDetail)
   background: var(--color-bg);
   line-height: 1.8;
 }
+
 .detail-card__reply-content {
   margin: 0;
   font-size: 15px;
   line-height: 1.8;
 }
+
 .detail-card__hint {
   margin: 0;
   color: #dc2626;
 }
+
 .detail-page__footer {
   margin-top: 20px;
 }

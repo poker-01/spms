@@ -6,23 +6,43 @@
 
     <!-- 统计卡片 -->
     <div class="stat-cards">
-      <div class="stat-card" :class="{ 'stat-card--active': query.status === undefined }" @click="setStatusFilter(undefined)">
+      <div
+        class="stat-card"
+        :class="{ 'stat-card--active': query.status === undefined }"
+        @click="setStatusFilter(undefined)"
+      >
         <span class="stat-card__label">全部</span>
         <span class="stat-card__value">{{ statistics.total }}</span>
       </div>
-      <div class="stat-card stat-card--warning" :class="{ 'stat-card--active': query.status === 0 }" @click="setStatusFilter(0)">
+      <div
+        class="stat-card stat-card--warning"
+        :class="{ 'stat-card--active': query.status === 0 }"
+        @click="setStatusFilter(0)"
+      >
         <span class="stat-card__label">待处理</span>
         <span class="stat-card__value">{{ statistics.pending }}</span>
       </div>
-      <div class="stat-card stat-card--primary" :class="{ 'stat-card--active': query.status === 1 }" @click="setStatusFilter(1)">
+      <div
+        class="stat-card stat-card--primary"
+        :class="{ 'stat-card--active': query.status === 1 }"
+        @click="setStatusFilter(1)"
+      >
         <span class="stat-card__label">处理中</span>
         <span class="stat-card__value">{{ statistics.processing }}</span>
       </div>
-      <div class="stat-card stat-card--success" :class="{ 'stat-card--active': query.status === 2 }" @click="setStatusFilter(2)">
+      <div
+        class="stat-card stat-card--success"
+        :class="{ 'stat-card--active': query.status === 2 }"
+        @click="setStatusFilter(2)"
+      >
         <span class="stat-card__label">已完成</span>
         <span class="stat-card__value">{{ statistics.completed }}</span>
       </div>
-      <div class="stat-card stat-card--info" :class="{ 'stat-card--active': query.status === 3 }" @click="setStatusFilter(3)">
+      <div
+        class="stat-card stat-card--info"
+        :class="{ 'stat-card--active': query.status === 3 }"
+        @click="setStatusFilter(3)"
+      >
         <span class="stat-card__label">已取消</span>
         <span class="stat-card__value">{{ statistics.cancelled }}</span>
       </div>
@@ -77,7 +97,6 @@
           </td>
           <td>{{ formatDate(row.createTime) }}</td>
           <td>
-            <!-- 待处理 → 派单 -->
             <button
               v-if="row.status === 0"
               class="btn btn-sm btn-primary"
@@ -86,7 +105,6 @@
             >
               派单
             </button>
-            <!-- 处理中 → 完成 -->
             <button
               v-if="row.status === 1"
               class="btn btn-sm btn-success"
@@ -95,7 +113,6 @@
             >
               完成
             </button>
-            <!-- 查看详情 -->
             <button
               class="btn btn-sm btn-ghost"
               type="button"
@@ -116,25 +133,29 @@
     <div v-if="total > 0" class="manage-page__pagination">
       <button
         class="btn btn-sm btn-ghost"
-        :disabled="query.pageNum <= 1"
-        @click="changePage(query.pageNum - 1)"
+        :disabled="getCurrentPage() <= 1"
+        @click="changePage(getCurrentPage() - 1)"
       >
         上一页
       </button>
       <span class="pagination-info">
-        第 {{ query.pageNum }} / {{ totalPages }} 页，共 {{ total }} 条
+        第 {{ getCurrentPage() }} / {{ totalPages }} 页，共 {{ total }} 条
       </span>
       <button
         class="btn btn-sm btn-ghost"
-        :disabled="query.pageNum >= totalPages"
-        @click="changePage(query.pageNum + 1)"
+        :disabled="getCurrentPage() >= totalPages"
+        @click="changePage(getCurrentPage() + 1)"
       >
         下一页
       </button>
     </div>
 
     <!-- 派单弹窗 -->
-    <div v-if="assignDialog.visible" class="dialog-overlay" @click.self="assignDialog.visible = false">
+    <div
+      v-if="assignDialog.visible"
+      class="dialog-overlay"
+      @click.self="assignDialog.visible = false"
+    >
       <div class="dialog dialog--assign">
         <h3 class="dialog__title">派单</h3>
         <div class="dialog__body">
@@ -158,7 +179,12 @@
           <button class="btn btn-ghost" type="button" @click="assignDialog.visible = false">
             取消
           </button>
-          <button class="btn btn-primary" type="button" :disabled="assignDialog.submitting" @click="handleAssign">
+          <button
+            class="btn btn-primary"
+            type="button"
+            :disabled="assignDialog.submitting"
+            @click="handleAssign"
+          >
             {{ assignDialog.submitting ? '提交中...' : '确认派单' }}
           </button>
         </div>
@@ -166,7 +192,11 @@
     </div>
 
     <!-- 完成报修弹窗 -->
-    <div v-if="completeDialog.visible" class="dialog-overlay" @click.self="completeDialog.visible = false">
+    <div
+      v-if="completeDialog.visible"
+      class="dialog-overlay"
+      @click.self="completeDialog.visible = false"
+    >
       <div class="dialog dialog--complete">
         <h3 class="dialog__title">完成报修</h3>
         <div class="dialog__body">
@@ -189,7 +219,12 @@
           <button class="btn btn-ghost" type="button" @click="completeDialog.visible = false">
             取消
           </button>
-          <button class="btn btn-success" type="button" :disabled="completeDialog.submitting" @click="handleComplete">
+          <button
+            class="btn btn-success"
+            type="button"
+            :disabled="completeDialog.submitting"
+            @click="handleComplete"
+          >
             {{ completeDialog.submitting ? '提交中...' : '确认完成' }}
           </button>
         </div>
@@ -202,40 +237,12 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
+import { getRepairPage, assignRepair, completeRepair, getUsersByRole } from '@/api/repair'
+import type { RepairVO, RepairQuery, RepairerInfo } from '@/api/repair'
 
 defineOptions({
   name: 'RepairManage',
 })
-
-// ============================================================
-// 类型定义
-// ============================================================
-
-interface RepairItem {
-  id: number
-  orderNo: string
-  ownerName?: string
-  repairType: number
-  repairTypeName: string
-  repairDesc: string
-  repairPhone: string
-  status: number
-  statusName: string
-  repairCost?: number
-  createTime: string
-  repairTime?: string
-}
-
-interface DictItem {
-  value: number
-  label: string
-}
-
-interface Repairer {
-  id: number
-  userName: string
-  fullName?: string
-}
 
 // ============================================================
 // 状态
@@ -243,13 +250,20 @@ interface Repairer {
 
 const router = useRouter()
 const loading = ref(false)
-const repairList = ref<RepairItem[]>([])
-const repairTypes = ref<DictItem[]>([])
-const repairers = ref<Repairer[]>([])
+const repairList = ref<RepairVO[]>([])
+
+// 报修类型（前端写死）
+const repairTypes = [
+  { value: 1, label: '水电维修' },
+  { value: 2, label: '家具维修' },
+  { value: 3, label: '家电维修' },
+  { value: 4, label: '其他' },
+]
+
+const repairers = ref<RepairerInfo[]>([])
 const total = ref(0)
 const totalPages = ref(1)
 
-// 统计
 const statistics = reactive({
   total: 0,
   pending: 0,
@@ -258,192 +272,76 @@ const statistics = reactive({
   cancelled: 0,
 })
 
-// 查询参数
-const query = reactive({
-  status: undefined as number | undefined,
-  repairType: undefined as number | undefined,
+const query = reactive<RepairQuery>({
+  status: undefined,
+  repairType: undefined,
   keyword: '',
   pageNum: 1,
   pageSize: 10,
 })
 
-// 派单弹窗
 const assignDialog = reactive({
   visible: false,
-  repair: null as RepairItem | null,
+  repair: null as RepairVO | null,
   repairerId: 0,
   submitting: false,
 })
 
-// 完成弹窗
 const completeDialog = reactive({
   visible: false,
-  repair: null as RepairItem | null,
+  repair: null as RepairVO | null,
   repairCost: 0,
   submitting: false,
 })
 
 // ============================================================
-// Mock 数据
+// 辅助方法
 // ============================================================
 
-const mockRepairList: RepairItem[] = [
-  {
-    id: 1,
-    orderNo: 'BX20260705001',
-    ownerName: '张三',
-    repairType: 1,
-    repairTypeName: '水电维修',
-    repairDesc: '厨房水龙头漏水，需要更换',
-    repairPhone: '13800138001',
-    status: 0,
-    statusName: '待处理',
-    createTime: '2026-07-05 09:30:00',
-  },
-  {
-    id: 2,
-    orderNo: 'BX20260704002',
-    ownerName: '李四',
-    repairType: 3,
-    repairTypeName: '家电维修',
-    repairDesc: '空调不制冷，可能是缺氟',
-    repairPhone: '13800138002',
-    status: 1,
-    statusName: '处理中',
-    createTime: '2026-07-04 14:20:00',
-    repairTime: '2026-07-05 08:00:00',
-  },
-  {
-    id: 3,
-    orderNo: 'BX20260703003',
-    ownerName: '王五',
-    repairType: 2,
-    repairTypeName: '家具维修',
-    repairDesc: '卧室衣柜门铰链松动',
-    repairPhone: '13800138003',
-    status: 2,
-    statusName: '已完成',
-    createTime: '2026-07-03 10:15:00',
-    repairTime: '2026-07-04 16:30:00',
-    repairCost: 80,
-  },
-  {
-    id: 4,
-    orderNo: 'BX20260702004',
-    ownerName: '赵六',
-    repairType: 4,
-    repairTypeName: '其他',
-    repairDesc: '客厅吊灯闪烁，需要检查电路',
-    repairPhone: '13800138004',
-    status: 3,
-    statusName: '已取消',
-    createTime: '2026-07-02 08:45:00',
-  },
-  {
-    id: 5,
-    orderNo: 'BX20260701005',
-    ownerName: '孙七',
-    repairType: 1,
-    repairTypeName: '水电维修',
-    repairDesc: '卫生间马桶堵塞，需要疏通',
-    repairPhone: '13800138005',
-    status: 0,
-    statusName: '待处理',
-    createTime: '2026-07-01 16:00:00',
-  },
-]
+/** 获取当前页码（带默认值） */
+const getCurrentPage = (): number => {
+  return query.pageNum ?? 1
+}
+
+/** 获取每页大小（带默认值） */
+const getPageSize = (): number => {
+  return query.pageSize ?? 10
+}
 
 // ============================================================
 // 方法
 // ============================================================
 
 /**
- * 加载字典数据
- * 接口：GET /api/v1/dict/repair_type
- */
-const loadDict = async () => {
-  try {
-    // 接口：GET /api/v1/dict/repair_type
-    // const { data } = await getDict('repair_type')
-    // repairTypes.value = data
-
-    // 临时Mock（后端接口完成后删除）
-    repairTypes.value = [
-      { value: 1, label: '水电维修' },
-      { value: 2, label: '家具维修' },
-      { value: 3, label: '家电维修' },
-      { value: 4, label: '其他' },
-    ]
-  } catch (error) {
-    console.error('加载字典失败:', error)
-  }
-}
-
-/**
  * 加载维修人员列表
- * 接口：GET /api/v1/admin/repairers
  */
 const loadRepairers = async () => {
   try {
-    // 接口：GET /api/v1/admin/repairers
-    // const { data } = await getRepairers()
-    // repairers.value = data
-
-    // 临时Mock（后端接口完成后删除）
-    repairers.value = [
-      { id: 1, userName: 'repairer1', fullName: '张师傅' },
-      { id: 2, userName: 'repairer2', fullName: '李师傅' },
-      { id: 3, userName: 'repairer3', fullName: '王师傅' },
-    ]
+    const { data } = await getUsersByRole(4)
+    repairers.value = data
   } catch (error) {
     console.error('加载维修人员失败:', error)
+    repairers.value = []
   }
 }
 
 /**
  * 加载报修列表
- * 接口：GET /api/v1/admin/repairs
  */
 const loadData = async () => {
   loading.value = true
   try {
-    // 接口：GET /api/v1/admin/repairs
-    // 参数：{ status?, repairType?, keyword?, pageNum?, pageSize? }
-    // const { data } = await getAdminRepairs(query)
-    // repairList.value = data.records
-    // total.value = data.total
-    // totalPages.value = data.pages
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 300))
-
-    let data = [...mockRepairList]
-
-    if (query.status !== undefined) {
-      data = data.filter((item) => item.status === query.status)
-    }
-    if (query.repairType !== undefined) {
-      data = data.filter((item) => item.repairType === query.repairType)
-    }
-    if (query.keyword) {
-      const kw = query.keyword.toLowerCase()
-      data = data.filter(
-        (item) =>
-          item.orderNo.toLowerCase().includes(kw) ||
-          item.repairDesc.includes(kw) ||
-          (item.ownerName && item.ownerName.includes(kw)),
-      )
-    }
-
-    total.value = data.length
-    totalPages.value = Math.ceil(total.value / query.pageSize)
-
-    const start = (query.pageNum - 1) * query.pageSize
-    const end = start + query.pageSize
-    repairList.value = data.slice(start, end)
-
-    // 更新统计
-    updateStatistics(mockRepairList)
+    const { data } = await getRepairPage({
+      status: query.status,
+      repairType: query.repairType,
+      keyword: query.keyword,
+      pageNum: getCurrentPage(),
+      pageSize: getPageSize(),
+    })
+    repairList.value = data.records
+    total.value = data.total
+    totalPages.value = data.pages
+    updateStatistics(data.records)
   } catch (error) {
     console.error('加载报修列表失败:', error)
   } finally {
@@ -454,7 +352,7 @@ const loadData = async () => {
 /**
  * 更新统计
  */
-const updateStatistics = (data: RepairItem[]) => {
+const updateStatistics = (data: RepairVO[]) => {
   statistics.total = data.length
   statistics.pending = data.filter((i) => i.status === 0).length
   statistics.processing = data.filter((i) => i.status === 1).length
@@ -494,14 +392,14 @@ const handleReset = () => {
 /**
  * 查看详情
  */
-const handleViewDetail = (row: RepairItem) => {
+const handleViewDetail = (row: RepairVO) => {
   router.push(`/admin/repairs/${row.id}`)
 }
 
 /**
  * 打开派单弹窗
  */
-const openAssignDialog = (row: RepairItem) => {
+const openAssignDialog = (row: RepairVO) => {
   assignDialog.repair = row
   assignDialog.repairerId = 0
   assignDialog.visible = true
@@ -509,7 +407,6 @@ const openAssignDialog = (row: RepairItem) => {
 
 /**
  * 派单
- * 接口：PUT /api/v1/admin/repairs/{id}/assign
  */
 const handleAssign = async () => {
   if (!assignDialog.repair) return
@@ -520,21 +417,12 @@ const handleAssign = async () => {
 
   assignDialog.submitting = true
   try {
-    // 接口：PUT /api/v1/admin/repairs/{id}/assign
-    // 请求体：{ repairerId }
-    // await assignRepair(assignDialog.repair.id, {
-    //   repairerId: assignDialog.repairerId,
-    // })
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 800))
-    const target = mockRepairList.find((r) => r.id === assignDialog.repair!.id)
-    if (target) {
-      target.status = 1
-      target.statusName = '处理中'
-    }
+    await assignRepair({
+      orderId: assignDialog.repair.id,
+      assigneeId: assignDialog.repairerId,
+    })
     assignDialog.visible = false
-    loadData()
+    await loadData()
     alert('派单成功！')
   } catch (error) {
     console.error('派单失败:', error)
@@ -547,7 +435,7 @@ const handleAssign = async () => {
 /**
  * 打开完成弹窗
  */
-const openCompleteDialog = (row: RepairItem) => {
+const openCompleteDialog = (row: RepairVO) => {
   completeDialog.repair = row
   completeDialog.repairCost = 0
   completeDialog.visible = true
@@ -555,7 +443,6 @@ const openCompleteDialog = (row: RepairItem) => {
 
 /**
  * 完成报修
- * 接口：PUT /api/v1/admin/repairs/{id}/complete
  */
 const handleComplete = async () => {
   if (!completeDialog.repair) return
@@ -566,22 +453,13 @@ const handleComplete = async () => {
 
   completeDialog.submitting = true
   try {
-    // 接口：PUT /api/v1/admin/repairs/{id}/complete
-    // 请求体：{ repairCost }
-    // await completeRepair(completeDialog.repair.id, {
-    //   repairCost: completeDialog.repairCost,
-    // })
+    await completeRepair({
+      orderId: completeDialog.repair.id,
+      repairCost: completeDialog.repairCost,
 
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 800))
-    const target = mockRepairList.find((r) => r.id === completeDialog.repair!.id)
-    if (target) {
-      target.status = 2
-      target.statusName = '已完成'
-      target.repairCost = completeDialog.repairCost
-    }
+    })
     completeDialog.visible = false
-    loadData()
+    await loadData()
     alert('报修已完成！')
   } catch (error) {
     console.error('完成报修失败:', error)
@@ -609,7 +487,6 @@ const getStatusClass = (status: number): string => {
 // ============================================================
 
 onMounted(async () => {
-  await loadDict()
   await loadRepairers()
   await loadData()
 })
@@ -818,6 +695,10 @@ onMounted(async () => {
 
 .dialog__info strong {
   color: var(--color-text);
+}
+
+.form-required {
+  color: #dc2626;
 }
 
 /* 响应式 */

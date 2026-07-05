@@ -7,23 +7,43 @@
 
     <!-- 统计卡片 -->
     <div class="stat-cards">
-      <div class="stat-card" :class="{ 'stat-card--active': query.status === undefined }" @click="setStatusFilter(undefined)">
+      <div
+        class="stat-card"
+        :class="{ 'stat-card--active': query.status === undefined }"
+        @click="setStatusFilter(undefined)"
+      >
         <span class="stat-card__label">全部</span>
         <span class="stat-card__value">{{ statistics.total }}</span>
       </div>
-      <div class="stat-card stat-card--warning" :class="{ 'stat-card--active': query.status === 0 }" @click="setStatusFilter(0)">
+      <div
+        class="stat-card stat-card--warning"
+        :class="{ 'stat-card--active': query.status === 0 }"
+        @click="setStatusFilter(0)"
+      >
         <span class="stat-card__label">待处理</span>
         <span class="stat-card__value">{{ statistics.pending }}</span>
       </div>
-      <div class="stat-card stat-card--primary" :class="{ 'stat-card--active': query.status === 1 }" @click="setStatusFilter(1)">
+      <div
+        class="stat-card stat-card--primary"
+        :class="{ 'stat-card--active': query.status === 1 }"
+        @click="setStatusFilter(1)"
+      >
         <span class="stat-card__label">处理中</span>
         <span class="stat-card__value">{{ statistics.processing }}</span>
       </div>
-      <div class="stat-card stat-card--success" :class="{ 'stat-card--active': query.status === 2 }" @click="setStatusFilter(2)">
+      <div
+        class="stat-card stat-card--success"
+        :class="{ 'stat-card--active': query.status === 2 }"
+        @click="setStatusFilter(2)"
+      >
         <span class="stat-card__label">已回复</span>
         <span class="stat-card__value">{{ statistics.replied }}</span>
       </div>
-      <div class="stat-card stat-card--info" :class="{ 'stat-card--active': query.status === 3 }" @click="setStatusFilter(3)">
+      <div
+        class="stat-card stat-card--info"
+        :class="{ 'stat-card--active': query.status === 3 }"
+        @click="setStatusFilter(3)"
+      >
         <span class="stat-card__label">已取消</span>
         <span class="stat-card__value">{{ statistics.cancelled }}</span>
       </div>
@@ -86,6 +106,14 @@
             >
               回复
             </button>
+            <button
+              v-if="row.status === 2"
+              class="btn btn-sm btn-success"
+              type="button"
+              @click="handleClose(row)"
+            >
+              关闭
+            </button>
             <button class="btn btn-sm btn-ghost" type="button" @click="handleViewDetail(row)">
               详情
             </button>
@@ -100,11 +128,21 @@
 
     <!-- 分页 -->
     <div v-if="total > 0" class="manage-page__pagination">
-      <button class="btn btn-sm btn-ghost" :disabled="query.pageNum <= 1" @click="changePage(query.pageNum - 1)">
+      <button
+        class="btn btn-sm btn-ghost"
+        :disabled="getCurrentPage() <= 1"
+        @click="changePage(getCurrentPage() - 1)"
+      >
         上一页
       </button>
-      <span class="pagination-info">第 {{ query.pageNum }} / {{ totalPages }} 页，共 {{ total }} 条</span>
-      <button class="btn btn-sm btn-ghost" :disabled="query.pageNum >= totalPages" @click="changePage(query.pageNum + 1)">
+      <span class="pagination-info">
+        第 {{ getCurrentPage() }} / {{ totalPages }} 页，共 {{ total }} 条
+      </span>
+      <button
+        class="btn btn-sm btn-ghost"
+        :disabled="getCurrentPage() >= totalPages"
+        @click="changePage(getCurrentPage() + 1)"
+      >
         下一页
       </button>
     </div>
@@ -132,7 +170,12 @@
         </div>
         <div class="dialog__footer">
           <button class="btn btn-ghost" type="button" @click="replyDialog.visible = false">取消</button>
-          <button class="btn btn-primary" type="button" :disabled="replyDialog.submitting" @click="handleReply">
+          <button
+            class="btn btn-primary"
+            type="button"
+            :disabled="replyDialog.submitting"
+            @click="handleReply"
+          >
             {{ replyDialog.submitting ? '提交中...' : '确认回复' }}
           </button>
         </div>
@@ -145,36 +188,29 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
+import { getComplaintPage, replyComplaint, closeComplaint } from '@/api/complaint'
+import type { ComplaintVO, ComplaintQuery } from '@/api/complaint'
 
 defineOptions({
   name: 'ComplaintManage',
 })
 
-interface ComplaintItem {
-  id: number
-  complaintNo: string
-  ownerName?: string
-  type: number
-  typeName: string
-  title: string
-  content: string
-  contactPhone?: string
-  status: number
-  statusName: string
-  replyContent?: string
-  replyTime?: string
-  createTime: string
-}
-
-interface DictItem {
-  value: number
-  label: string
-}
+// ============================================================
+// 状态
+// ============================================================
 
 const router = useRouter()
 const loading = ref(false)
-const list = ref<ComplaintItem[]>([])
-const types = ref<DictItem[]>([])
+const list = ref<ComplaintVO[]>([])
+
+// 投诉类型（前端写死）
+const types = [
+  { value: 1, label: '物业服务' },
+  { value: 2, label: '设施维修' },
+  { value: 3, label: '噪音扰民' },
+  { value: 4, label: '其他' },
+]
+
 const total = ref(0)
 const totalPages = ref(1)
 
@@ -186,9 +222,9 @@ const statistics = reactive({
   cancelled: 0,
 })
 
-const query = reactive({
-  status: undefined as number | undefined,
-  type: undefined as number | undefined,
+const query = reactive<ComplaintQuery>({
+  status: undefined,
+  type: undefined,
   keyword: '',
   pageNum: 1,
   pageSize: 10,
@@ -196,138 +232,57 @@ const query = reactive({
 
 const replyDialog = reactive({
   visible: false,
-  item: null as ComplaintItem | null,
+  item: null as ComplaintVO | null,
   content: '',
   submitting: false,
 })
 
-// Mock 数据
-const mockList: ComplaintItem[] = [
-  {
-    id: 1,
-    complaintNo: 'TS20260705001',
-    ownerName: '张三',
-    type: 1,
-    typeName: '物业服务',
-    title: '楼道卫生不干净',
-    content: '最近一周楼道都没有人打扫，垃圾堆积，异味严重。',
-    contactPhone: '13800138001',
-    status: 0,
-    statusName: '待处理',
-    createTime: '2026-07-05 09:30:00',
-  },
-  {
-    id: 2,
-    complaintNo: 'TS20260704002',
-    ownerName: '李四',
-    type: 2,
-    typeName: '设施维修',
-    title: '小区路灯损坏',
-    content: '小区中心花园的路灯坏了三天了，晚上散步很不方便。',
-    contactPhone: '13800138002',
-    status: 1,
-    statusName: '处理中',
-    createTime: '2026-07-04 14:20:00',
-  },
-  {
-    id: 3,
-    complaintNo: 'TS20260703003',
-    ownerName: '王五',
-    type: 3,
-    typeName: '噪音扰民',
-    title: '邻居装修噪音过大',
-    content: '楼下邻居每天中午12-2点还在装修，严重影响休息。',
-    contactPhone: '13800138003',
-    status: 2,
-    statusName: '已回复',
-    createTime: '2026-07-03 10:15:00',
-    replyContent: '已联系业主协调，装修时间已调整为工作日上午8-12点，下午2-6点。',
-    replyTime: '2026-07-04 16:30:00',
-  },
-  {
-    id: 4,
-    complaintNo: 'TS20260702004',
-    ownerName: '赵六',
-    type: 4,
-    typeName: '其他',
-    title: '快递柜经常故障',
-    content: '小区快递柜最近经常显示故障，取不了快递。',
-    contactPhone: '13800138004',
-    status: 3,
-    statusName: '已取消',
-    createTime: '2026-07-02 08:45:00',
-  },
-  {
-    id: 5,
-    complaintNo: 'TS20260701005',
-    ownerName: '孙七',
-    type: 1,
-    typeName: '物业服务',
-    title: '保安态度差',
-    content: '今天早上出门，保安态度非常差，语气恶劣。',
-    contactPhone: '13800138005',
-    status: 0,
-    statusName: '待处理',
-    createTime: '2026-07-01 07:30:00',
-  },
-]
+// ============================================================
+// 辅助方法
+// ============================================================
 
-const loadDict = async () => {
-  try {
-    // 接口：GET /api/v1/dict/complaint_type
-    types.value = [
-      { value: 1, label: '物业服务' },
-      { value: 2, label: '设施维修' },
-      { value: 3, label: '噪音扰民' },
-      { value: 4, label: '其他' },
-    ]
-  } catch (error) {
-    console.error('加载字典失败:', error)
-  }
+/** 获取当前页码（带默认值） */
+const getCurrentPage = (): number => {
+  return query.pageNum ?? 1
 }
 
+/** 获取每页大小（带默认值） */
+const getPageSize = (): number => {
+  return query.pageSize ?? 10
+}
+
+// ============================================================
+// 方法
+// ============================================================
+
+/**
+ * 加载投诉列表
+ */
 const loadData = async () => {
   loading.value = true
   try {
-    // 接口：GET /api/v1/admin/complaints
-    // const { data } = await getAdminComplaints(query)
-    // list.value = data.records
-    // total.value = data.total
-    // totalPages.value = data.pages
-
-    await new Promise((resolve) => setTimeout(resolve, 300))
-
-    let data = [...mockList]
-    if (query.status !== undefined) {
-      data = data.filter((item) => item.status === query.status)
-    }
-    if (query.type !== undefined) {
-      data = data.filter((item) => item.type === query.type)
-    }
-    if (query.keyword) {
-      const kw = query.keyword.toLowerCase()
-      data = data.filter(
-        (item) =>
-          item.title.includes(kw) ||
-          item.content.includes(kw) ||
-          (item.ownerName && item.ownerName.includes(kw)),
-      )
-    }
-
-    total.value = data.length
-    totalPages.value = Math.ceil(total.value / query.pageSize)
-    const start = (query.pageNum - 1) * query.pageSize
-    list.value = data.slice(start, start + query.pageSize)
-
-    updateStatistics(mockList)
+    const { data } = await getComplaintPage({
+      status: query.status,
+      type: query.type,
+      keyword: query.keyword,
+      pageNum: getCurrentPage(),
+      pageSize: getPageSize(),
+    })
+    list.value = data.records
+    total.value = data.total
+    totalPages.value = data.pages
+    updateStatistics(data.records)
   } catch (error) {
-    console.error('加载失败:', error)
+    console.error('加载投诉列表失败:', error)
   } finally {
     loading.value = false
   }
 }
 
-const updateStatistics = (data: ComplaintItem[]) => {
+/**
+ * 更新统计
+ */
+const updateStatistics = (data: ComplaintVO[]) => {
   statistics.total = data.length
   statistics.pending = data.filter((i) => i.status === 0).length
   statistics.processing = data.filter((i) => i.status === 1).length
@@ -335,18 +290,27 @@ const updateStatistics = (data: ComplaintItem[]) => {
   statistics.cancelled = data.filter((i) => i.status === 3).length
 }
 
+/**
+ * 设置状态筛选
+ */
 const setStatusFilter = (status: number | undefined) => {
   query.status = status
   query.pageNum = 1
   loadData()
 }
 
+/**
+ * 切换页码
+ */
 const changePage = (page: number) => {
   if (page < 1 || page > totalPages.value) return
   query.pageNum = page
   loadData()
 }
 
+/**
+ * 重置搜索
+ */
 const handleReset = () => {
   query.status = undefined
   query.type = undefined
@@ -355,16 +319,25 @@ const handleReset = () => {
   loadData()
 }
 
-const handleViewDetail = (row: ComplaintItem) => {
+/**
+ * 查看详情
+ */
+const handleViewDetail = (row: ComplaintVO) => {
   router.push(`/admin/complaints/${row.id}`)
 }
 
-const openReplyDialog = (row: ComplaintItem) => {
+/**
+ * 打开回复弹窗
+ */
+const openReplyDialog = (row: ComplaintVO) => {
   replyDialog.item = row
   replyDialog.content = ''
   replyDialog.visible = true
 }
 
+/**
+ * 回复投诉
+ */
 const handleReply = async () => {
   if (!replyDialog.item) return
   if (!replyDialog.content.trim()) {
@@ -374,30 +347,39 @@ const handleReply = async () => {
 
   replyDialog.submitting = true
   try {
-    // 接口：PUT /api/v1/admin/complaints/{id}/reply
-    // 请求体：{ replyContent }
-    // await replyComplaint(replyDialog.item.id, {
-    //   replyContent: replyDialog.content,
-    // })
-
-    await new Promise((resolve) => setTimeout(resolve, 800))
-    const target = mockList.find((r) => r.id === replyDialog.item!.id)
-    if (target) {
-      target.status = 2
-      target.statusName = '已回复'
-      target.replyContent = replyDialog.content
-      target.replyTime = new Date().toISOString().replace('T', ' ').slice(0, 19)
-    }
+    await replyComplaint({
+      complaintId: replyDialog.item.id,
+      replyContent: replyDialog.content,
+    })
     replyDialog.visible = false
-    loadData()
+    await loadData()
     alert('回复成功！')
   } catch (error) {
-    alert('回复失败')
+    console.error('回复失败:', error)
+    alert('回复失败，请稍后重试')
   } finally {
     replyDialog.submitting = false
   }
 }
 
+/**
+ * 关闭投诉
+ */
+const handleClose = async (row: ComplaintVO) => {
+  if (!confirm('确认关闭该投诉吗？关闭后不可恢复。')) return
+  try {
+    await closeComplaint(row.id)
+    await loadData()
+    alert('投诉已关闭！')
+  } catch (error) {
+    console.error('关闭投诉失败:', error)
+    alert('操作失败，请稍后重试')
+  }
+}
+
+/**
+ * 获取状态样式
+ */
 const getStatusClass = (status: number): string => {
   const map: Record<number, string> = {
     0: 'status-badge--warning',
@@ -408,8 +390,11 @@ const getStatusClass = (status: number): string => {
   return map[status] || ''
 }
 
+// ============================================================
+// 生命周期
+// ============================================================
+
 onMounted(async () => {
-  await loadDict()
   await loadData()
 })
 </script>
