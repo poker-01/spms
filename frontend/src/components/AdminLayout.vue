@@ -1,3 +1,4 @@
+<!-- src/components/AdminLayout.vue -->
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -16,9 +17,16 @@ const { logout } = useAuth()
 
 const roleText = computed(() => formatRoleLabels(userStore.userInfo?.roles))
 
+// 判断菜单是否激活（包括子菜单）
 const isActive = (path?: string) => {
   if (!path) return false
   return route.path === path || route.path.startsWith(path + '/')
+}
+
+// 判断子菜单是否激活
+const isChildActive = (children?: any[]) => {
+  if (!children) return false
+  return children.some(child => route.path === child.path || route.path.startsWith(child.path + '/'))
 }
 
 const navigate = (path?: string) => {
@@ -42,31 +50,31 @@ const handleLogout = async () => {
 
       <nav class="admin-layout__menu">
         <ul>
-          <li
-            v-for="menu in userStore.menus"
-            :key="menu.id"
-            :class="{ 'admin-layout__menu-item--active': isActive(menu.path) }"
-          >
-            <button class="admin-layout__menu-item" type="button" @click="navigate(menu.path)">
-              <span v-if="menu.icon" class="admin-layout__menu-icon">{{ menu.icon }}</span>
-              <span>{{ menu.name }}</span>
-            </button>
-            <ul v-if="menu.children && menu.children.length > 0" class="admin-layout__submenu">
-              <li
-                v-for="sub in menu.children"
-                :key="sub.id"
-                :class="{ 'admin-layout__submenu-item--active': isActive(sub.path) }"
-              >
-                <button
-                  class="admin-layout__submenu-item"
-                  type="button"
-                  @click="navigate(sub.path)"
-                >
-                  <span>{{ sub.name }}</span>
-                </button>
-              </li>
-            </ul>
-          </li>
+          <template v-for="menu in userStore.menus" :key="menu.id">
+            <!-- 有子菜单 -->
+            <li v-if="menu.children && menu.children.length > 0"
+                :class="{ 'admin-layout__menu-item--active': isChildActive(menu.children) }">
+              <div class="admin-layout__menu-group">
+                <span v-if="menu.icon" class="admin-layout__menu-icon">{{ menu.icon }}</span>
+                <span class="admin-layout__menu-label">{{ menu.name }}</span>
+              </div>
+              <ul class="admin-layout__submenu">
+                <li v-for="sub in menu.children" :key="sub.id"
+                    :class="{ 'admin-layout__submenu-item--active': isActive(sub.path) }">
+                  <button class="admin-layout__submenu-item" type="button" @click="navigate(sub.path)">
+                    <span>{{ sub.name }}</span>
+                  </button>
+                </li>
+              </ul>
+            </li>
+            <!-- 无子菜单 -->
+            <li v-else :class="{ 'admin-layout__menu-item--active': isActive(menu.path) }">
+              <button class="admin-layout__menu-item" type="button" @click="navigate(menu.path)">
+                <span v-if="menu.icon" class="admin-layout__menu-icon">{{ menu.icon }}</span>
+                <span>{{ menu.name }}</span>
+              </button>
+            </li>
+          </template>
         </ul>
       </nav>
     </aside>
@@ -104,6 +112,7 @@ const handleLogout = async () => {
   background: #1e293b;
   color: #fff;
   overflow-y: auto;
+  z-index: 100;
 }
 
 .admin-layout__brand {
@@ -131,28 +140,43 @@ const handleLogout = async () => {
   font-weight: 700;
 }
 
-.admin-layout__menu ul,
-.admin-layout__submenu {
+.admin-layout__menu ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .admin-layout__menu > ul {
-  padding: 12px;
+  padding: 8px 12px;
 }
 
-.admin-layout__menu-item,
-.admin-layout__submenu-item {
+/* 菜单组标题 */
+.admin-layout__menu-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 6px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.admin-layout__menu-group .admin-layout__menu-icon {
+  font-size: 14px;
+}
+
+.admin-layout__menu-item {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px;
+  padding: 10px 12px;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.75);
   font-size: 14px;
   font-weight: 500;
   text-align: left;
@@ -160,29 +184,59 @@ const handleLogout = async () => {
   transition: all 0.2s;
 }
 
-.admin-layout__menu-item:hover,
-.admin-layout__submenu-item:hover {
+.admin-layout__menu-item:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
 }
 
 .admin-layout__menu-item--active > .admin-layout__menu-item,
-.admin-layout__submenu-item--active > .admin-layout__submenu-item {
-  background: var(--color-primary);
+.admin-layout__menu-item--active > .admin-layout__menu-group {
   color: #fff;
+}
+
+.admin-layout__menu-item--active > .admin-layout__menu-item {
+  background: var(--color-primary);
 }
 
 .admin-layout__menu-icon {
   font-size: 16px;
+  flex-shrink: 0;
 }
 
+.admin-layout__menu-label {
+  flex: 1;
+}
+
+/* 子菜单 */
 .admin-layout__submenu {
   padding-left: 20px;
+  margin-bottom: 4px;
 }
 
 .admin-layout__submenu-item {
-  padding: 10px 12px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.admin-layout__submenu-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.admin-layout__submenu-item--active .admin-layout__submenu-item {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
 }
 
 .admin-layout__main {
@@ -231,5 +285,19 @@ const handleLogout = async () => {
   flex: 1;
   padding: 24px;
   background: var(--color-bg);
+}
+
+/* 滚动条 */
+.admin-layout__sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.admin-layout__sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.admin-layout__sidebar::-webkit-scrollbar-track {
+  background: transparent;
 }
 </style>

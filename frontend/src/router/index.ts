@@ -48,6 +48,12 @@ const router = createRouter({
           meta: { requiresAuth: true, portal: 'owner' },
         },
         {
+          path: 'repairs/:id',
+          name: 'OwnerRepairDetail',
+          component: () => import('@/views/owner/OwnerRepairDetail.vue'),
+          meta: { requiresAuth: true, portal: 'owner' },
+        },
+        {
           path: 'complaints',
           name: 'OwnerComplaints',
           component: () => import('@/views/owner/OwnerComplaints.vue'),
@@ -94,6 +100,18 @@ const router = createRouter({
           path: 'role-permissions',
           name: 'RolePermissionAssign',
           component: () => import('@/views/admin/RolePermissionAssign.vue'),
+          meta: { requiresAuth: true, portal: 'property' },
+        },
+        {
+          path: 'repairs',
+          name: 'RepairManage',
+          component: () => import('@/views/admin/RepairManage.vue'),
+          meta: { requiresAuth: true, portal: 'property' },
+        },
+        {
+          path: 'repairs/:id',
+          name: 'AdminRepairDetail',
+          component: () => import('@/views/admin/RepairDetail.vue'),
           meta: { requiresAuth: true, portal: 'property' },
         },
       ],
