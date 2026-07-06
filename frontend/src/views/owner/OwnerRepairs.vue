@@ -56,7 +56,7 @@
             <span>提交时间：{{ formatDate(item.createTime) }}</span>
             <span v-if="item.repairTime">维修时间：{{ formatDate(item.repairTime) }}</span>
           </div>
-          <div v-if="item.status === 2 && item.repairCost" class="repair-card__cost">
+          <div v-if="item.status === 3 && item.repairCost" class="repair-card__cost">
             费用：¥{{ item.repairCost.toFixed(2) }}
             <span v-if="item.evaluateScore" class="repair-card__score">
               评分：{{ '⭐'.repeat(item.evaluateScore) }}
@@ -74,7 +74,7 @@
             取消报修
           </button>
           <button
-            v-if="item.status === 2 && !item.evaluateScore"
+            v-if="item.status === 3 && !item.evaluateScore"
             class="btn btn-sm btn-primary"
             type="button"
             @click="handleViewDetail(item)"
@@ -156,11 +156,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
-import { getRepairPage, applyRepair, cancelRepair } from '@/api/repair'
-import type { RepairVO, RepairQuery } from '@/api/repair'
+import { getOwnerRepairs, applyRepair } from '@/api/owner'
+import { cancelRepair } from '@/api/repair'
+import type { OwnerRepair } from '@/utils/api-types'
 
 defineOptions({
   name: 'OwnerRepairs',
@@ -172,7 +173,8 @@ defineOptions({
 
 const router = useRouter()
 const loading = ref(false)
-const repairList = ref<RepairVO[]>([])
+const allRepairs = ref<OwnerRepair[]>([])
+const repairList = ref<OwnerRepair[]>([])
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const total = ref(0)
@@ -186,17 +188,19 @@ const repairTypes = [
   { value: 4, label: '其他' },
 ]
 
-// 报修状态（前端写死）
+// 报修状态（与后端 RepairStatus 枚举一致）
 const statuses = [
-  { value: 0, label: '待处理' },
-  { value: 1, label: '处理中' },
-  { value: 2, label: '已完成' },
-  { value: 3, label: '已取消' },
+  { value: 0, label: '待派单' },
+  { value: 1, label: '已派单' },
+  { value: 2, label: '处理中' },
+  { value: 3, label: '已完成' },
+  { value: 4, label: '已取消' },
+  { value: 5, label: '已关闭' },
 ]
 
 // 查询参数
-const query = reactive<RepairQuery>({
-  status: undefined,
+const query = reactive({
+  status: undefined as number | undefined,
   keyword: '',
   pageNum: 1,
   pageSize: 10,
@@ -210,17 +214,30 @@ const form = reactive({
 })
 
 // ============================================================
-// 辅助方法
+// 客户端分页与筛选
 // ============================================================
 
-/** 获取当前页码（带默认值） */
-const getCurrentPage = (): number => {
-  return query.pageNum ?? 1
-}
+const filteredRepairs = computed(() => {
+  let list = allRepairs.value
+  if (query.status !== undefined) {
+    list = list.filter(r => r.status === query.status)
+  }
+  if (query.keyword.trim()) {
+    const kw = query.keyword.trim().toLowerCase()
+    list = list.filter(r =>
+      r.orderNo.toLowerCase().includes(kw) ||
+      r.repairDesc.toLowerCase().includes(kw)
+    )
+  }
+  return list
+})
 
-/** 获取每页大小（带默认值） */
-const getPageSize = (): number => {
-  return query.pageSize ?? 10
+const applyPagination = () => {
+  const list = filteredRepairs.value
+  total.value = list.length
+  totalPages.value = Math.max(1, Math.ceil(list.length / query.pageSize))
+  const start = (query.pageNum - 1) * query.pageSize
+  repairList.value = list.slice(start, start + query.pageSize)
 }
 
 // ============================================================
@@ -233,15 +250,9 @@ const getPageSize = (): number => {
 const loadRepairs = async () => {
   loading.value = true
   try {
-    const { data } = await getRepairPage({
-      status: query.status,
-      keyword: query.keyword,
-      pageNum: getCurrentPage(),
-      pageSize: getPageSize(),
-    })
-    repairList.value = data.records
-    total.value = data.total
-    totalPages.value = data.pages
+    const { data } = await getOwnerRepairs()
+    allRepairs.value = data
+    applyPagination()
   } catch (error) {
     console.error('加载报修列表失败:', error)
   } finally {
@@ -268,9 +279,10 @@ const handleSubmit = async () => {
 
   submitting.value = true
   try {
-    // 后端期望的字段是 content 和 contactPhone
+    // 后端 RepairApplyRequest 期望: content, repairType(数值code), contactPhone
     await applyRepair({
       content: form.repairDesc.trim(),
+      repairType: form.repairType,
       contactPhone: form.repairPhone.trim(),
     })
     dialogVisible.value = false
@@ -290,7 +302,7 @@ const handleSubmit = async () => {
 /**
  * 取消报修
  */
-const handleCancel = async (item: RepairVO) => {
+const handleCancel = async (item: OwnerRepair) => {
   if (!confirm('确定要取消该报修单吗？')) return
 
   try {
@@ -306,7 +318,7 @@ const handleCancel = async (item: RepairVO) => {
 /**
  * 查看详情
  */
-const handleViewDetail = (item: RepairVO) => {
+const handleViewDetail = (item: OwnerRepair) => {
   router.push(`/owner/repairs/${item.id}`)
 }
 
@@ -316,7 +328,7 @@ const handleViewDetail = (item: RepairVO) => {
 const changePage = (page: number) => {
   if (page < 1 || page > totalPages.value) return
   query.pageNum = page
-  loadRepairs()
+  applyPagination()
 }
 
 /**
@@ -326,7 +338,7 @@ const handleReset = () => {
   query.status = undefined
   query.keyword = ''
   query.pageNum = 1
-  loadRepairs()
+  applyPagination()
 }
 
 /**
@@ -336,8 +348,10 @@ const getStatusClass = (status: number): string => {
   const map: Record<number, string> = {
     0: 'status--warning',
     1: 'status--primary',
-    2: 'status--success',
-    3: 'status--info',
+    2: 'status--primary',
+    3: 'status--success',
+    4: 'status--info',
+    5: 'status--info',
   }
   return map[status] || ''
 }

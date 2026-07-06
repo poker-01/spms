@@ -229,7 +229,8 @@ const handleSubmit = async () => {
       await houseApi.create(form)
       ElMessage.success('新增成功')
     }
-    dialogVisible.value = false    loadData()
+    dialogVisible.value = false
+    loadData()
   } catch (error) {
     ElMessage.error(isEdit.value ? '更新失败' : '新增失败')
   }

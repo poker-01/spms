@@ -204,6 +204,20 @@ public class BillInfoServiceImpl extends ServiceImpl<BillInfoMapper, BillInfo>
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteBill(Long billId) {
+        BillInfo bill = getById(billId);
+        if (bill == null || bill.getIsDeleted() == 1) {
+            throw new CustomException(ResultCode.NOT_FOUND, "账单不存在");
+        }
+        if (bill.getStatus() != BillStatus.UNPAID.getCode()) {
+            throw new CustomException(ResultCode.FAIL, "仅待缴费状态的账单可删除");
+        }
+        bill.setIsDeleted(1);
+        updateById(bill);
+    }
+
+    @Override
     public Object countByStatus() {
         List<Map<String, Object>> list = billInfoMapper.countByStatus();
         return list.stream().collect(Collectors.toMap(

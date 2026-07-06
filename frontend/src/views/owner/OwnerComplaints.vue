@@ -14,27 +14,27 @@
           v-model="query.keyword"
           class="form-input"
           placeholder="搜索标题/内容"
-          @keyup.enter="loadData"
+          @keyup.enter="handleSearch"
         />
-        <select v-model="query.status" class="form-input" @change="loadData">
+        <select v-model="query.status" class="form-input" @change="handleSearch">
           <option :value="undefined">全部状态</option>
           <option v-for="item in statuses" :key="item.value" :value="item.value">
             {{ item.label }}
           </option>
         </select>
-        <button class="btn btn-primary" type="button" @click="loadData">查询</button>
+        <button class="btn btn-primary" type="button" @click="handleSearch">查询</button>
         <button class="btn btn-ghost" type="button" @click="handleReset">重置</button>
       </div>
     </div>
 
     <!-- 列表 -->
     <div v-if="loading" class="owner-page__loading">加载中...</div>
-    <div v-else-if="!list.length" class="owner-page__empty">
+    <div v-else-if="!complaintList.length" class="owner-page__empty">
       <p>暂无投诉记录</p>
     </div>
     <div v-else class="owner-page__list">
       <article
-        v-for="item in list"
+        v-for="item in complaintList"
         :key="item.id"
         class="complaint-card"
         @click="handleViewDetail(item)"
@@ -78,18 +78,18 @@
     <div v-if="total > 0" class="owner-page__pagination">
       <button
         class="btn btn-sm btn-ghost"
-        :disabled="getCurrentPage() <= 1"
-        @click="changePage(getCurrentPage() - 1)"
+        :disabled="query.pageNum <= 1"
+        @click="changePage(query.pageNum - 1)"
       >
         上一页
       </button>
       <span class="pagination-info">
-        第 {{ getCurrentPage() }} / {{ totalPages }} 页，共 {{ total }} 条
+        第 {{ query.pageNum }} / {{ totalPages }} 页，共 {{ total }} 条
       </span>
       <button
         class="btn btn-sm btn-ghost"
-        :disabled="getCurrentPage() >= totalPages"
-        @click="changePage(getCurrentPage() + 1)"
+        :disabled="query.pageNum >= totalPages"
+        @click="changePage(query.pageNum + 1)"
       >
         下一页
       </button>
@@ -154,11 +154,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
-import { getComplaintPage, applyComplaint, cancelComplaint } from '@/api/complaint'
-import type { ComplaintVO, ComplaintQuery } from '@/api/complaint'
+import { getOwnerComplaints, applyComplaint, cancelOwnerComplaint } from '@/api/owner'
+import type { OwnerComplaint } from '@/utils/api-types'
 
 defineOptions({
   name: 'OwnerComplaints',
@@ -170,7 +170,8 @@ defineOptions({
 
 const router = useRouter()
 const loading = ref(false)
-const list = ref<ComplaintVO[]>([])
+const allComplaints = ref<OwnerComplaint[]>([])
+const complaintList = ref<OwnerComplaint[]>([])
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const total = ref(0)
@@ -194,8 +195,8 @@ const statuses = [
 ]
 
 // 查询参数
-const query = reactive<ComplaintQuery>({
-  status: undefined,
+const query = reactive({
+  status: undefined as number | undefined,
   keyword: '',
   pageNum: 1,
   pageSize: 10,
@@ -210,17 +211,30 @@ const form = reactive({
 })
 
 // ============================================================
-// 辅助方法
+// 客户端分页与筛选
 // ============================================================
 
-/** 获取当前页码（带默认值） */
-const getCurrentPage = (): number => {
-  return query.pageNum ?? 1
-}
+const filteredComplaints = computed(() => {
+  let list = allComplaints.value
+  if (query.status !== undefined) {
+    list = list.filter(c => c.status === query.status)
+  }
+  if (query.keyword.trim()) {
+    const kw = query.keyword.trim().toLowerCase()
+    list = list.filter(c =>
+      c.title.toLowerCase().includes(kw) ||
+      c.content.toLowerCase().includes(kw)
+    )
+  }
+  return list
+})
 
-/** 获取每页大小（带默认值） */
-const getPageSize = (): number => {
-  return query.pageSize ?? 10
+const applyPagination = () => {
+  const list = filteredComplaints.value
+  total.value = list.length
+  totalPages.value = Math.max(1, Math.ceil(list.length / query.pageSize))
+  const start = (query.pageNum - 1) * query.pageSize
+  complaintList.value = list.slice(start, start + query.pageSize)
 }
 
 // ============================================================
@@ -233,15 +247,9 @@ const getPageSize = (): number => {
 const loadData = async () => {
   loading.value = true
   try {
-    const { data } = await getComplaintPage({
-      status: query.status,
-      keyword: query.keyword,
-      pageNum: getCurrentPage(),
-      pageSize: getPageSize(),
-    })
-    list.value = data.records
-    total.value = data.total
-    totalPages.value = data.pages
+    const { data } = await getOwnerComplaints()
+    allComplaints.value = data
+    applyPagination()
   } catch (error) {
     console.error('加载投诉列表失败:', error)
   } finally {
@@ -292,11 +300,11 @@ const handleSubmit = async () => {
 /**
  * 取消投诉
  */
-const handleCancel = async (item: ComplaintVO) => {
+const handleCancel = async (item: OwnerComplaint) => {
   if (!confirm('确定要取消该投诉吗？')) return
 
   try {
-    await cancelComplaint(item.id)
+    await cancelOwnerComplaint(item.id)
     await loadData()
     alert('已取消投诉')
   } catch (error) {
@@ -306,9 +314,17 @@ const handleCancel = async (item: ComplaintVO) => {
 }
 
 /**
+ * 搜索（重置页码并重新筛选）
+ */
+const handleSearch = () => {
+  query.pageNum = 1
+  applyPagination()
+}
+
+/**
  * 查看详情
  */
-const handleViewDetail = (item: ComplaintVO) => {
+const handleViewDetail = (item: OwnerComplaint) => {
   router.push(`/owner/complaints/${item.id}`)
 }
 
@@ -318,7 +334,7 @@ const handleViewDetail = (item: ComplaintVO) => {
 const changePage = (page: number) => {
   if (page < 1 || page > totalPages.value) return
   query.pageNum = page
-  loadData()
+  applyPagination()
 }
 
 /**
@@ -328,7 +344,7 @@ const handleReset = () => {
   query.status = undefined
   query.keyword = ''
   query.pageNum = 1
-  loadData()
+  applyPagination()
 }
 
 /**

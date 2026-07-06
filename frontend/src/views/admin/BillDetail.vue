@@ -36,7 +36,7 @@
             </div>
             <div class="detail-card__item">
               <label>所属房屋</label>
-              <span>{{ detail.houseInfo || '-' }}</span>
+              <span>{{ formatHouse(detail) }}</span>
             </div>
             <div class="detail-card__item">
               <label>费用项目</label>
@@ -44,23 +44,23 @@
             </div>
             <div class="detail-card__item">
               <label>账单金额</label>
-              <span class="detail-card__amount">¥{{ detail.amount.toFixed(2) }}</span>
+              <span class="detail-card__amount">¥{{ detail.billAmount.toFixed(2) }}</span>
             </div>
             <div class="detail-card__item">
               <label>账单周期</label>
-              <span>{{ detail.period || '-' }}</span>
+              <span>{{ detail.billPeriod || '-' }}</span>
             </div>
             <div class="detail-card__item">
               <label>缴费截止</label>
-              <span :class="{ 'text-danger': detail.status === 2 }">
-                {{ formatDate(detail.deadline) }}
+              <span :class="{ 'text-danger': detail.status === 3 }">
+                {{ formatDate(detail.payDeadline) }}
               </span>
             </div>
             <div v-if="detail.payTime" class="detail-card__item">
               <label>缴费时间</label>
               <span>{{ formatDate(detail.payTime) }}</span>
             </div>
-            <div v-if="detail.payMethod" class="detail-card__item">
+            <div v-if="detail.payMethod != null" class="detail-card__item">
               <label>支付方式</label>
               <span>{{ getPayMethodLabel(detail.payMethod) }}</span>
             </div>
@@ -86,7 +86,7 @@
                 <span class="status-step__time">{{ formatDate(detail.createTime) }}</span>
               </div>
             </div>
-            <div class="status-step" :class="{ 'status-step--active': detail.status === 1 }">
+            <div class="status-step" :class="{ 'status-step--active': detail.status >= 2 }">
               <span class="status-step__dot">2</span>
               <div class="status-step__content">
                 <span class="status-step__label">缴费完成</span>
@@ -95,7 +95,7 @@
                 </span>
               </div>
             </div>
-            <div v-if="detail.status === 2" class="status-step status-step--danger">
+            <div v-if="detail.status === 3" class="status-step status-step--danger">
               <span class="status-step__dot">⚠️</span>
               <div class="status-step__content">
                 <span class="status-step__label">已逾期</span>
@@ -108,7 +108,7 @@
         </div>
 
         <!-- 缴费记录 -->
-        <div v-if="detail.status === 1" class="detail-card detail-card--receipt">
+        <div v-if="detail.status === 2" class="detail-card detail-card--receipt">
           <h3 class="detail-card__title">📄 缴费凭证</h3>
           <div class="receipt-grid">
             <div class="receipt-item">
@@ -117,7 +117,7 @@
             </div>
             <div class="receipt-item">
               <label>缴费金额</label>
-              <span class="receipt-amount">¥{{ detail.amount.toFixed(2) }}</span>
+              <span class="receipt-amount">¥{{ detail.billAmount.toFixed(2) }}</span>
             </div>
             <div class="receipt-item">
               <label>支付方式</label>
@@ -133,9 +133,9 @@
 
       <!-- 底部操作按钮 -->
       <div class="detail-page__footer">
-        <!-- 待缴费 → 标记为已缴费（手动录入） -->
+        <!-- 待缴费/部分缴费 → 标记为已缴费（手动录入） -->
         <button
-          v-if="detail.status === 0"
+          v-if="detail.status === 0 || detail.status === 1"
           class="btn btn-success"
           type="button"
           @click="openPayDialog"
@@ -153,7 +153,7 @@
         </button>
         <!-- 已缴费 → 打印凭证 -->
         <button
-          v-if="detail.status === 1"
+          v-if="detail.status === 2"
           class="btn btn-ghost"
           type="button"
           @click="handlePrint"
@@ -172,7 +172,7 @@
             账单编号：<strong>{{ detail?.billNo }}</strong>
           </p>
           <p class="dialog__info">
-            缴费金额：<strong class="text-primary">¥{{ detail?.amount.toFixed(2) }}</strong>
+            缴费金额：<strong class="text-primary">¥{{ detail?.billAmount.toFixed(2) }}</strong>
           </p>
           <div class="form-field">
             <label class="form-label">支付方式 <span class="form-required">*</span></label>
@@ -252,7 +252,7 @@
               </div>
               <div class="print-row">
                 <span class="print-label">房屋信息：</span>
-                <span class="print-value">{{ detail?.houseInfo || '-' }}</span>
+                <span class="print-value">{{ formatHouse(detail) }}</span>
               </div>
               <div class="print-row">
                 <span class="print-label">费用项目：</span>
@@ -260,7 +260,7 @@
               </div>
               <div class="print-row">
                 <span class="print-label">缴费金额：</span>
-                <span class="print-value print-amount">¥{{ detail?.amount.toFixed(2) }}</span>
+                <span class="print-value print-amount">¥{{ detail?.billAmount.toFixed(2) }}</span>
               </div>
               <div class="print-row">
                 <span class="print-label">支付方式：</span>
@@ -272,7 +272,7 @@
               </div>
               <div class="print-row">
                 <span class="print-label">账单周期：</span>
-                <span class="print-value">{{ detail?.period || '-' }}</span>
+                <span class="print-value">{{ detail?.billPeriod || '-' }}</span>
               </div>
             </div>
             <div class="print-footer">
@@ -294,32 +294,16 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
+import {
+  getAdminBillDetail,
+  payBill,
+  deleteBill,
+  type BillDetail,
+} from '@/api/bill-admin'
 
 defineOptions({
   name: 'AdminBillDetail',
 })
-
-// ============================================================
-// 类型定义
-// ============================================================
-
-interface BillDetail {
-  id: number
-  billNo: string
-  ownerName?: string
-  houseInfo?: string
-  itemName: string
-  itemType: number
-  amount: number
-  status: number // 0-待缴费 1-已缴费 2-已逾期
-  statusName: string
-  period?: string
-  deadline: string
-  payTime?: string
-  payMethod?: string
-  remark?: string
-  createTime: string
-}
 
 // ============================================================
 // 状态
@@ -330,25 +314,25 @@ const router = useRouter()
 const loading = ref(false)
 const detail = ref<BillDetail | null>(null)
 
-// 支付方式
+// 支付方式（与后端 PayMethod 枚举 code 对应：0-现金 1-银行转账 2-微信支付 3-支付宝）
 const payMethods = [
-  { value: 'wechat', label: '微信支付', icon: '💚' },
-  { value: 'alipay', label: '支付宝', icon: '💙' },
-  { value: 'cash', label: '现金', icon: '💰' },
-  { value: 'bank', label: '银行转账', icon: '🏦' },
+  { value: 0, label: '现金', icon: '💰' },
+  { value: 1, label: '银行转账', icon: '🏦' },
+  { value: 2, label: '微信支付', icon: '💚' },
+  { value: 3, label: '支付宝', icon: '💙' },
 ]
 
-const payMethodLabels: Record<string, string> = {
-  wechat: '微信支付',
-  alipay: '支付宝',
-  cash: '现金',
-  bank: '银行转账',
+const payMethodLabels: Record<number, string> = {
+  0: '现金',
+  1: '银行转账',
+  2: '微信支付',
+  3: '支付宝',
 }
 
 // 缴费弹窗
 const payDialog = reactive({
   visible: false,
-  payMethod: 'cash',
+  payMethod: 0,
   remark: '',
   submitting: false,
 })
@@ -365,66 +349,21 @@ const printDialog = reactive({
 })
 
 // ============================================================
-// Mock 数据
-// ============================================================
-
-const mockDetail: BillDetail = {
-  id: 1,
-  billNo: 'ZD20260705001',
-  ownerName: '张三',
-  houseInfo: 'A栋1单元101',
-  itemName: '物业管理费',
-  itemType: 1,
-  amount: 320.50,
-  status: 0,
-  statusName: '待缴费',
-  period: '2026年7月',
-  deadline: '2026-07-25 23:59:59',
-  createTime: '2026-07-01 08:00:00',
-  remark: '',
-}
-
-const mockDetailPaid: BillDetail = {
-  id: 3,
-  billNo: 'ZD20260705003',
-  ownerName: '李四',
-  houseInfo: 'A栋1单元102',
-  itemName: '物业管理费',
-  itemType: 1,
-  amount: 320.50,
-  status: 1,
-  statusName: '已缴费',
-  period: '2026年7月',
-  deadline: '2026-07-25 23:59:59',
-  payTime: '2026-07-05 10:00:00',
-  payMethod: 'wechat',
-  createTime: '2026-07-01 08:00:00',
-  remark: '',
-}
-
-const mockDetailOverdue: BillDetail = {
-  id: 4,
-  billNo: 'ZD20260605004',
-  ownerName: '王五',
-  houseInfo: 'B栋2单元201',
-  itemName: '物业管理费',
-  itemType: 1,
-  amount: 320.50,
-  status: 2,
-  statusName: '已逾期',
-  period: '2026年6月',
-  deadline: '2026-06-25 23:59:59',
-  createTime: '2026-06-01 08:00:00',
-  remark: '已多次催缴',
-}
-
-// ============================================================
 // 方法
 // ============================================================
 
 /**
+ * 格式化房屋信息
+ */
+const formatHouse = (row?: BillDetail | null): string => {
+  if (!row) return '-'
+  const parts = [row.buildingName, row.houseNumber].filter(Boolean)
+  return parts.length ? parts.join(' ') : '-'
+}
+
+/**
  * 加载账单详情
- * 接口：GET /api/v1/admin/bills/{id}
+ * 接口：GET /api/v1/finance/bills/{id}
  */
 const loadDetail = async () => {
   const id = Number(route.params.id)
@@ -436,21 +375,8 @@ const loadDetail = async () => {
 
   loading.value = true
   try {
-    // 接口：GET /api/v1/admin/bills/{id}
-    // const { data } = await getAdminBillDetail(id)
-    // detail.value = data
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    if (id === 1) {
-      detail.value = mockDetail
-    } else if (id === 3) {
-      detail.value = mockDetailPaid
-    } else if (id === 4) {
-      detail.value = mockDetailOverdue
-    } else {
-      detail.value = { ...mockDetail, id }
-    }
+    const { data } = await getAdminBillDetail(id)
+    detail.value = data
   } catch (error) {
     console.error('加载账单详情失败:', error)
     alert('加载失败，请稍后重试')
@@ -471,44 +397,36 @@ const goBack = () => {
  * 打开缴费弹窗
  */
 const openPayDialog = () => {
-  payDialog.payMethod = 'cash'
+  payDialog.payMethod = 0
   payDialog.remark = ''
   payDialog.visible = true
 }
 
 /**
- * 标记为已缴费
- * 接口：POST /api/v1/admin/bills/{id}/mark-paid
+ * 缴费登记
+ * 接口：POST /api/v1/finance/bills/pay
  */
 const handleMarkPaid = async () => {
   if (!detail.value) return
-  if (!payDialog.payMethod) {
+  if (payDialog.payMethod === undefined) {
     alert('请选择支付方式')
     return
   }
 
   payDialog.submitting = true
   try {
-    // 接口：POST /api/v1/admin/bills/{id}/mark-paid
-    // 请求体：{ payMethod, remark? }
-    // await markBillPaid(detail.value.id, {
-    //   payMethod: payDialog.payMethod,
-    //   remark: payDialog.remark,
-    // })
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    detail.value.status = 1
-    detail.value.statusName = '已缴费'
-    detail.value.payTime = new Date().toISOString().replace('T', ' ').slice(0, 19)
-    detail.value.payMethod = payDialog.payMethod
-    if (payDialog.remark) {
-      detail.value.remark = payDialog.remark
-    }
-
+    const remaining = Number(
+      ((detail.value.billAmount || 0) - (detail.value.paidAmount || 0)).toFixed(2)
+    )
+    await payBill({
+      billId: detail.value.id,
+      payAmount: remaining > 0 ? remaining : 0,
+      payMethod: payDialog.payMethod,
+      receiptNo: payDialog.remark || undefined,
+    })
+    await loadDetail()
     payDialog.visible = false
-    alert('缴费标记成功！')
+    alert('缴费登记成功！')
   } catch (error) {
     console.error('标记缴费失败:', error)
     alert('操作失败，请稍后重试')
@@ -526,19 +444,14 @@ const handleDelete = () => {
 
 /**
  * 确认删除
- * 接口：DELETE /api/v1/admin/bills/{id}
+ * 接口：DELETE /api/v1/finance/bills/{id}
  */
 const handleConfirmDelete = async () => {
   if (!detail.value) return
 
   deleteDialog.submitting = true
   try {
-    // 接口：DELETE /api/v1/admin/bills/{id}
-    // await deleteBill(detail.value.id)
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 800))
-
+    await deleteBill(detail.value.id)
     deleteDialog.visible = false
     alert('删除成功！')
     router.push('/admin/bills')
@@ -611,19 +524,20 @@ const handlePrintReceipt = () => {
 /**
  * 获取支付方式标签
  */
-const getPayMethodLabel = (method?: string) => {
-  if (!method) return '-'
-  return payMethodLabels[method] || method
+const getPayMethodLabel = (method?: number) => {
+  if (method === undefined || method === null) return '-'
+  return payMethodLabels[method] || '其他'
 }
 
 /**
- * 获取状态样式
+ * 获取状态样式（后端 BillStatus：0-待缴费 1-部分缴费 2-已缴费 3-已逾期）
  */
 const getStatusClass = (status: number): string => {
   const map: Record<number, string> = {
     0: 'status--warning',
-    1: 'status--success',
-    2: 'status--danger',
+    1: 'status--primary',
+    2: 'status--success',
+    3: 'status--danger',
   }
   return map[status] || ''
 }
@@ -693,6 +607,10 @@ onMounted(() => {
 .status--warning {
   background: #fef3c7;
   color: #d97706;
+}
+.status--primary {
+  background: #dbeafe;
+  color: #2563eb;
 }
 .status--success {
   background: #d1fae5;

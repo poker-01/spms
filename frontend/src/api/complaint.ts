@@ -88,11 +88,11 @@ export const replyComplaint = (data: ReplyComplaintDTO) => {
 }
 
 /**
- * 接口：PUT /api/v1/complaint/{complaintId}/close
+ * 接口：PUT /api/v1/complaints/{complaintId}/close
  * 功能：关闭投诉
  */
 export const closeComplaint = (complaintId: number) => {
-  return request.put<void>(`/api/v1/complaint/${complaintId}/close`)
+  return request.put<void>(`/api/v1/complaints/${complaintId}/close`)
 }
 
 /**

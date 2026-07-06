@@ -110,6 +110,14 @@ public class FinanceController {
         return Result.success();
     }
 
+    @Operation(summary = "删除账单")
+    @DeleteMapping("/bills/{id}")
+    @PreAuthorize("hasAuthority('finance:bill:delete')")
+    public Result<Void> deleteBill(@PathVariable Long id) {
+        billInfoService.deleteBill(id);
+        return Result.success();
+    }
+
     @Operation(summary = "统计各状态账单数量")
     @GetMapping("/bills/stats/status")
     @PreAuthorize("hasAuthority('dashboard:view')")

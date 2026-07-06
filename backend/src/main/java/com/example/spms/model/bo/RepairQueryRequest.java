@@ -11,6 +11,9 @@ import lombok.Data;
 @Data
 public class RepairQueryRequest {
 
+    /** 关键字：按工单号或报修描述模糊搜索 */
+    private String keyword;
+
     private String orderNo;
 
     private Integer status;

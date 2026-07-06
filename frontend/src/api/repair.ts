@@ -27,10 +27,10 @@ export interface RepairVO {
 
 export interface RepairQuery {
   status?: number
-  repairType?: number
+  repairType?: string
   keyword?: string
-  pageNum?: number
-  pageSize?: number
+  page?: number
+  size?: number
   [key: string]: string | number | boolean | null | undefined
 }
 
@@ -51,8 +51,9 @@ export interface RepairPageResult {
  * 对应后端 RepairApplyRequest
  */
 export interface ApplyRepairDTO {
-  content: string        // ← 改为 content
-  contactPhone: string   // ← 改为 contactPhone
+  content: string        // 报修描述
+  repairType: string     // 报修类型（如：水电维修、家具维修等）
+  contactPhone: string   // 联系电话
 }
 
 /**
@@ -128,14 +129,15 @@ export const getRepairPage = (params?: RepairQuery) => {
 }
 
 /**
- * 接口：POST /api/v1/repairs
- * 功能：提交报修申请
+ * 接口：POST /api/v1/owner/repairs
+ * 功能：业主提交报修申请
  * 对应后端：RepairApplyRequest
- * 字段：content, contactPhone
+ * 字段：content, repairType, contactPhone
  */
 export const applyRepair = (data: ApplyRepairDTO) => {
-  return request.post<{ id: number; orderNo: string }>('/api/v1/repairs', {
+  return request.post<void>('/api/v1/owner/repairs', {
     content: data.content,
+    repairType: data.repairType,
     contactPhone: data.contactPhone,
   })
 }

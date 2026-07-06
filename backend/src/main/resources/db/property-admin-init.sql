@@ -33,6 +33,33 @@ VALUES
   ('system:permission:edit', '编辑权限', 2, @permission_id, NULL, NULL, 'system:permission:edit', 2, 0, 0, 0),
   ('system:permission:delete', '删除权限', 2, @permission_id, NULL, NULL, 'system:permission:delete', 3, 0, 0, 0);
 
+-- 初始化财务管理菜单/按钮权限
+INSERT IGNORE INTO sys_permission_info (permission_code, permission_name, permission_type, parent_id, permission_path, permission_component, permission_str, sort_order, visible, is_deleted, version)
+VALUES ('finance:fee:menu', '费用项目管理', 1, 5, '/admin/fee-items', NULL, 'finance:fee:query', 6, 1, 0, 0);
+
+INSERT IGNORE INTO sys_permission_info (permission_code, permission_name, permission_type, parent_id, permission_path, permission_component, permission_str, sort_order, visible, is_deleted, version)
+VALUES ('finance:bill:menu', '账单管理', 1, 5, '/admin/bills', NULL, 'finance:bill:query', 7, 1, 0, 0);
+
+INSERT IGNORE INTO sys_permission_info (permission_code, permission_name, permission_type, parent_id, permission_path, permission_component, permission_str, sort_order, visible, is_deleted, version)
+VALUES ('finance:payment:menu', '缴费记录', 1, 5, '/admin/payments', NULL, 'finance:payment:query', 8, 1, 0, 0);
+
+SET @fee_menu_id = (SELECT id FROM sys_permission_info WHERE permission_code = 'finance:fee:menu' AND is_deleted = 0 LIMIT 1);
+SET @bill_menu_id = (SELECT id FROM sys_permission_info WHERE permission_code = 'finance:bill:menu' AND is_deleted = 0 LIMIT 1);
+SET @payment_menu_id = (SELECT id FROM sys_permission_info WHERE permission_code = 'finance:payment:menu' AND is_deleted = 0 LIMIT 1);
+
+INSERT IGNORE INTO sys_permission_info (permission_code, permission_name, permission_type, parent_id, permission_path, permission_component, permission_str, sort_order, visible, is_deleted, version)
+VALUES
+  ('finance:fee:query', '查询费用项目', 2, @fee_menu_id, NULL, NULL, 'finance:fee:query', 1, 0, 0, 0),
+  ('finance:fee:add', '新增费用项目', 2, @fee_menu_id, NULL, NULL, 'finance:fee:add', 2, 0, 0, 0),
+  ('finance:fee:edit', '编辑费用项目', 2, @fee_menu_id, NULL, NULL, 'finance:fee:edit', 3, 0, 0, 0),
+  ('finance:fee:delete', '删除费用项目', 2, @fee_menu_id, NULL, NULL, 'finance:fee:delete', 4, 0, 0, 0),
+  ('finance:bill:query', '查询账单', 2, @bill_menu_id, NULL, NULL, 'finance:bill:query', 1, 0, 0, 0),
+  ('finance:bill:generate', '生成账单', 2, @bill_menu_id, NULL, NULL, 'finance:bill:generate', 2, 0, 0, 0),
+  ('finance:bill:pay', '缴费登记', 2, @bill_menu_id, NULL, NULL, 'finance:bill:pay', 3, 0, 0, 0),
+  ('finance:bill:delete', '删除账单', 2, @bill_menu_id, NULL, NULL, 'finance:bill:delete', 4, 0, 0, 0),
+  ('finance:payment:query', '查询缴费记录', 2, @payment_menu_id, NULL, NULL, 'finance:payment:query', 1, 0, 0, 0),
+  ('dashboard:view', '数据看板', 2, 0, NULL, NULL, 'dashboard:view', 1, 0, 0, 0);
+
 -- 为 ROLE_SUPER_ADMIN 分配全部权限（系统管理+业务）
 INSERT IGNORE INTO sys_role_permission (role_info_id, permission_info_id, is_deleted, version)
 SELECT 1, p.id, 0, 0
@@ -45,10 +72,13 @@ SELECT 2, p.id, 0, 0
 FROM sys_permission_info p
 WHERE p.is_deleted = 0
   AND p.permission_code IN (
-    'dashboard',
+    'dashboard', 'dashboard:view',
     'community', 'community:community', 'community:building', 'community:house', 'community:owner',
     'property', 'property:repair', 'property:complaint',
-    'finance', 'finance:fee', 'finance:bill', 'finance:payment'
+    'finance', 'finance:fee', 'finance:bill', 'finance:payment',
+    'finance:fee:menu', 'finance:fee:query', 'finance:fee:add', 'finance:fee:edit', 'finance:fee:delete',
+    'finance:bill:menu', 'finance:bill:query', 'finance:bill:generate', 'finance:bill:pay', 'finance:bill:delete',
+    'finance:payment:menu', 'finance:payment:query'
   );
 
 -- 物业管理员测试账号（复用 admin 的密码哈希）

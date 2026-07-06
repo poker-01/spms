@@ -12,11 +12,13 @@ public class OwnerComplaintVO {
 
     private Long id;
     private String complaintNo;
-    private String type;
+    private Integer type;
+    private String typeName;
     private String title;
     private String content;
     private String contactPhone;
     private Integer status;
+    private String statusName;
     private String replyContent;
     private String replyTime;
     private String createTime;

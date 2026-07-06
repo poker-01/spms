@@ -52,8 +52,8 @@
           </div>
         </div>
 
-        <!-- 维修结果（已完成时显示） -->
-        <div v-if="detail.status === 2" class="detail-card">
+        <!-- 维修结果（已完成/已关闭时显示） -->
+        <div v-if="detail.status === 3 || detail.status === 5" class="detail-card">
           <h3 class="detail-card__title">维修结果</h3>
           <div class="detail-card__grid">
             <div class="detail-card__item">
@@ -77,7 +77,7 @@
         </div>
 
         <!-- 取消原因（已取消时显示） -->
-        <div v-if="detail.status === 3" class="detail-card detail-card--cancelled">
+        <div v-if="detail.status === 4" class="detail-card detail-card--cancelled">
           <h3 class="detail-card__title">⚠️ 已取消</h3>
           <p class="detail-card__hint">该报修单已被取消，如有疑问请联系物业。</p>
         </div>
@@ -139,8 +139,9 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
-import { getRepairDetail, cancelRepair, evaluateRepair } from '@/api/repair'
-import type { RepairVO } from '@/api/repair'
+import { cancelRepair, evaluateRepair } from '@/api/repair'
+import { getOwnerRepairDetail } from '@/api/owner'
+import type { OwnerRepair } from '@/utils/api-types'
 
 defineOptions({
   name: 'OwnerRepairDetail',
@@ -149,7 +150,7 @@ defineOptions({
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
-const detail = ref<RepairVO | null>(null)
+const detail = ref<OwnerRepair | null>(null)
 const showEvaluate = ref(false)
 const evaluating = ref(false)
 
@@ -160,7 +161,7 @@ const evaluateForm = reactive({
 
 /**
  * 加载报修详情
- * 接口：GET /api/v1/repairs/{orderId}
+ * 接口：GET /api/v1/owner/repairs/{orderId}
  */
 const loadDetail = async () => {
   const orderId = Number(route.params.id)
@@ -172,7 +173,7 @@ const loadDetail = async () => {
 
   loading.value = true
   try {
-    const { data } = await getRepairDetail(orderId)
+    const { data } = await getOwnerRepairDetail(orderId)
     detail.value = data
   } catch (error) {
     console.error('加载报修详情失败:', error)
@@ -240,8 +241,10 @@ const getStatusClass = (status: number): string => {
   const map: Record<number, string> = {
     0: 'status--warning',
     1: 'status--primary',
-    2: 'status--success',
-    3: 'status--info',
+    2: 'status--primary',
+    3: 'status--success',
+    4: 'status--info',
+    5: 'status--info',
   }
   return map[status] || ''
 }

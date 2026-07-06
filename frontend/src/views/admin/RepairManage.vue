@@ -19,29 +19,29 @@
         :class="{ 'stat-card--active': query.status === 0 }"
         @click="setStatusFilter(0)"
       >
-        <span class="stat-card__label">待处理</span>
+        <span class="stat-card__label">待派单</span>
         <span class="stat-card__value">{{ statistics.pending }}</span>
       </div>
       <div
         class="stat-card stat-card--primary"
-        :class="{ 'stat-card--active': query.status === 1 }"
-        @click="setStatusFilter(1)"
+        :class="{ 'stat-card--active': query.status === 2 }"
+        @click="setStatusFilter(2)"
       >
         <span class="stat-card__label">处理中</span>
         <span class="stat-card__value">{{ statistics.processing }}</span>
       </div>
       <div
         class="stat-card stat-card--success"
-        :class="{ 'stat-card--active': query.status === 2 }"
-        @click="setStatusFilter(2)"
+        :class="{ 'stat-card--active': query.status === 3 }"
+        @click="setStatusFilter(3)"
       >
         <span class="stat-card__label">已完成</span>
         <span class="stat-card__value">{{ statistics.completed }}</span>
       </div>
       <div
         class="stat-card stat-card--info"
-        :class="{ 'stat-card--active': query.status === 3 }"
-        @click="setStatusFilter(3)"
+        :class="{ 'stat-card--active': query.status === 4 }"
+        @click="setStatusFilter(4)"
       >
         <span class="stat-card__label">已取消</span>
         <span class="stat-card__value">{{ statistics.cancelled }}</span>
@@ -107,6 +107,14 @@
             </button>
             <button
               v-if="row.status === 1"
+              class="btn btn-sm btn-primary"
+              type="button"
+              @click="handleStart(row)"
+            >
+              开始处理
+            </button>
+            <button
+              v-if="row.status === 2"
               class="btn btn-sm btn-success"
               type="button"
               @click="openCompleteDialog(row)"
@@ -237,7 +245,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
-import { getRepairPage, assignRepair, completeRepair, getUsersByRole } from '@/api/repair'
+import { getRepairPage, assignRepair, completeRepair, startRepair, getUsersByRole } from '@/api/repair'
 import type { RepairVO, RepairQuery, RepairerInfo } from '@/api/repair'
 
 defineOptions({
@@ -252,12 +260,12 @@ const router = useRouter()
 const loading = ref(false)
 const repairList = ref<RepairVO[]>([])
 
-// 报修类型（前端写死）
+// 报修类型（与数据库中存储的中文标签一致，用于筛选）
 const repairTypes = [
-  { value: 1, label: '水电维修' },
-  { value: 2, label: '家具维修' },
-  { value: 3, label: '家电维修' },
-  { value: 4, label: '其他' },
+  { value: '水电维修', label: '水电维修' },
+  { value: '家具维修', label: '家具维修' },
+  { value: '家电维修', label: '家电维修' },
+  { value: '其他', label: '其他' },
 ]
 
 const repairers = ref<RepairerInfo[]>([])
@@ -276,8 +284,8 @@ const query = reactive<RepairQuery>({
   status: undefined,
   repairType: undefined,
   keyword: '',
-  pageNum: 1,
-  pageSize: 10,
+  page: 1,
+  size: 10,
 })
 
 const assignDialog = reactive({
@@ -300,12 +308,12 @@ const completeDialog = reactive({
 
 /** 获取当前页码（带默认值） */
 const getCurrentPage = (): number => {
-  return query.pageNum ?? 1
+  return query.page ?? 1
 }
 
 /** 获取每页大小（带默认值） */
 const getPageSize = (): number => {
-  return query.pageSize ?? 10
+  return query.size ?? 10
 }
 
 // ============================================================
@@ -335,8 +343,8 @@ const loadData = async () => {
       status: query.status,
       repairType: query.repairType,
       keyword: query.keyword,
-      pageNum: getCurrentPage(),
-      pageSize: getPageSize(),
+      page: getCurrentPage(),
+      size: getPageSize(),
     })
     repairList.value = data.records
     total.value = data.total
@@ -355,9 +363,9 @@ const loadData = async () => {
 const updateStatistics = (data: RepairVO[]) => {
   statistics.total = data.length
   statistics.pending = data.filter((i) => i.status === 0).length
-  statistics.processing = data.filter((i) => i.status === 1).length
-  statistics.completed = data.filter((i) => i.status === 2).length
-  statistics.cancelled = data.filter((i) => i.status === 3).length
+  statistics.processing = data.filter((i) => i.status === 2).length
+  statistics.completed = data.filter((i) => i.status === 3).length
+  statistics.cancelled = data.filter((i) => i.status === 4).length
 }
 
 /**
@@ -365,7 +373,7 @@ const updateStatistics = (data: RepairVO[]) => {
  */
 const setStatusFilter = (status: number | undefined) => {
   query.status = status
-  query.pageNum = 1
+  query.page = 1
   loadData()
 }
 
@@ -374,7 +382,7 @@ const setStatusFilter = (status: number | undefined) => {
  */
 const changePage = (page: number) => {
   if (page < 1 || page > totalPages.value) return
-  query.pageNum = page
+  query.page = page
   loadData()
 }
 
@@ -385,7 +393,7 @@ const handleReset = () => {
   query.status = undefined
   query.repairType = undefined
   query.keyword = ''
-  query.pageNum = 1
+  query.page = 1
   loadData()
 }
 
@@ -433,6 +441,20 @@ const handleAssign = async () => {
 }
 
 /**
+ * 开始处理
+ */
+const handleStart = async (row: RepairVO) => {
+  try {
+    await startRepair(row.id)
+    await loadData()
+    alert('已开始处理！')
+  } catch (error) {
+    console.error('开始处理失败:', error)
+    alert('操作失败，请稍后重试')
+  }
+}
+
+/**
  * 打开完成弹窗
  */
 const openCompleteDialog = (row: RepairVO) => {
@@ -476,8 +498,10 @@ const getStatusClass = (status: number): string => {
   const map: Record<number, string> = {
     0: 'status-badge--warning',
     1: 'status-badge--primary',
-    2: 'status-badge--success',
-    3: 'status-badge--info',
+    2: 'status-badge--primary',
+    3: 'status-badge--success',
+    4: 'status-badge--info',
+    5: 'status-badge--info',
   }
   return map[status] || ''
 }

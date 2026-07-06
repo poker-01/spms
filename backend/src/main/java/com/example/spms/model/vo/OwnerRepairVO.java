@@ -15,10 +15,12 @@ public class OwnerRepairVO {
     private Long id;
     private String orderNo;
     private String repairType;
+    private String repairTypeName;
     private String repairDesc;
     private String repairPhone;
     private Integer priority;
     private Integer status;
+    private String statusName;
     private BigDecimal repairCost;
     private Integer evaluateScore;
     private String evaluateComment;

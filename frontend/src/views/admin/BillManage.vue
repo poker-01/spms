@@ -18,11 +18,11 @@
         <span class="stat-card__label">待缴费</span>
         <span class="stat-card__value">{{ statistics.unpaid }}</span>
       </div>
-      <div class="stat-card stat-card--success" :class="{ 'stat-card--active': query.status === 1 }" @click="setStatusFilter(1)">
+      <div class="stat-card stat-card--success" :class="{ 'stat-card--active': query.status === 2 }" @click="setStatusFilter(2)">
         <span class="stat-card__label">已缴费</span>
         <span class="stat-card__value">{{ statistics.paid }}</span>
       </div>
-      <div class="stat-card stat-card--warning" :class="{ 'stat-card--active': query.status === 2 }" @click="setStatusFilter(2)">
+      <div class="stat-card stat-card--warning" :class="{ 'stat-card--active': query.status === 3 }" @click="setStatusFilter(3)">
         <span class="stat-card__label">已逾期</span>
         <span class="stat-card__value">{{ statistics.overdue }}</span>
       </div>
@@ -37,14 +37,14 @@
           placeholder="搜索账单号/项目/业主"
           @keyup.enter="loadData"
         />
-        <select v-model="query.billType" class="form-input" @change="loadData">
+        <select v-model="query.feeItemId" class="form-input" @change="loadData">
           <option :value="undefined">全部类型</option>
           <option v-for="item in feeItems" :key="item.id" :value="item.id">
             {{ item.itemName }}
           </option>
         </select>
-        <input v-model="query.startDate" class="form-input" type="date" @change="loadData" />
-        <input v-model="query.endDate" class="form-input" type="date" @change="loadData" />
+        <input v-model="query.startTime" class="form-input" type="date" @change="loadData" />
+        <input v-model="query.endTime" class="form-input" type="date" @change="loadData" />
         <button class="btn btn-primary" type="button" @click="loadData">查询</button>
         <button class="btn btn-ghost" type="button" @click="handleReset">重置</button>
       </div>
@@ -71,15 +71,15 @@
             <span class="table-link" @click="handleViewDetail(row)">{{ row.billNo }}</span>
           </td>
           <td>{{ row.ownerName || '-' }}</td>
-          <td>{{ row.houseInfo || '-' }}</td>
+          <td>{{ formatHouse(row) }}</td>
           <td>{{ row.itemName }}</td>
-          <td>¥{{ row.amount.toFixed(2) }}</td>
+          <td>¥{{ row.billAmount.toFixed(2) }}</td>
           <td>
               <span :class="['status-badge', getStatusClass(row.status)]">
                 {{ row.statusName }}
               </span>
           </td>
-          <td>{{ formatDate(row.deadline) }}</td>
+          <td>{{ formatDate(row.payDeadline) }}</td>
           <td>
             <button class="btn btn-sm btn-ghost" type="button" @click="handleViewDetail(row)">
               详情
@@ -103,11 +103,11 @@
 
     <!-- 分页 -->
     <div v-if="total > 0" class="manage-page__pagination">
-      <button class="btn btn-sm btn-ghost" :disabled="query.pageNum <= 1" @click="changePage(query.pageNum - 1)">
+      <button class="btn btn-sm btn-ghost" :disabled="query.page <= 1" @click="changePage(query.page - 1)">
         上一页
       </button>
-      <span class="pagination-info">第 {{ query.pageNum }} / {{ totalPages }} 页，共 {{ total }} 条</span>
-      <button class="btn btn-sm btn-ghost" :disabled="query.pageNum >= totalPages" @click="changePage(query.pageNum + 1)">
+      <span class="pagination-info">第 {{ query.page }} / {{ totalPages }} 页，共 {{ total }} 条</span>
+      <button class="btn btn-sm btn-ghost" :disabled="query.page >= totalPages" @click="changePage(query.page + 1)">
         下一页
       </button>
     </div>
@@ -118,15 +118,6 @@
         <h3 class="dialog__title">生成账单</h3>
         <div class="dialog__body">
           <div class="form-field">
-            <label class="form-label">选择小区 <span class="form-required">*</span></label>
-            <select v-model="generateDialog.communityId" class="form-input">
-              <option :value="0">请选择小区</option>
-              <option v-for="item in communities" :key="item.id" :value="item.id">
-                {{ item.name }}
-              </option>
-            </select>
-          </div>
-          <div class="form-field">
             <label class="form-label">费用项目 <span class="form-required">*</span></label>
             <select v-model="generateDialog.feeItemId" class="form-input">
               <option :value="0">请选择费用项目</option>
@@ -136,14 +127,32 @@
             </select>
           </div>
           <div class="form-field">
+            <label class="form-label">选择业主 <span class="form-required">*</span></label>
+            <div class="owner-select">
+              <label
+                v-for="owner in owners"
+                :key="owner.id"
+                class="owner-option"
+              >
+                <input v-model="generateDialog.ownerIds" type="checkbox" :value="owner.id" />
+                <span>{{ owner.ownerName }}{{ owner.ownerPhone ? `（${owner.ownerPhone}）` : '' }}</span>
+              </label>
+              <p v-if="!owners.length" class="owner-select__empty">暂无业主数据</p>
+            </div>
+          </div>
+          <div class="form-field">
             <label class="form-label">账单周期 <span class="form-required">*</span></label>
-            <input v-model="generateDialog.period" class="form-input" type="month" />
+            <input v-model="generateDialog.billPeriod" class="form-input" type="month" placeholder="如：2026-07" />
+          </div>
+          <div class="form-field">
+            <label class="form-label">账单金额（元） <span class="form-required">*</span></label>
+            <input v-model.number="generateDialog.billAmount" class="form-input" type="number" min="0.01" step="0.01" placeholder="请输入账单金额" />
           </div>
           <div class="form-field">
             <label class="form-label">截止日期 <span class="form-required">*</span></label>
-            <input v-model="generateDialog.deadline" class="form-input" type="date" />
+            <input v-model="generateDialog.payDeadline" class="form-input" type="date" />
           </div>
-          <p class="generate-hint">📌 将为该小区所有业主生成该费用项目的账单</p>
+          <p class="generate-hint">📌 将为选中的业主生成该费用项目的账单</p>
         </div>
         <div class="dialog__footer">
           <button class="btn btn-ghost" type="button" @click="generateDialog.visible = false">取消</button>
@@ -160,40 +169,21 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
+import {
+  getAdminBills,
+  getAllFeeItems,
+  getBillStatusStats,
+  generateBills,
+  deleteBill,
+  getOwnerList,
+  type BillItem,
+  type FeeItem,
+  type OwnerOption,
+} from '@/api/bill-admin'
 
 defineOptions({
   name: 'BillManage',
 })
-
-// ============================================================
-// 类型定义
-// ============================================================
-
-interface BillItem {
-  id: number
-  billNo: string
-  ownerName?: string
-  houseInfo?: string
-  itemName: string
-  itemType: number
-  amount: number
-  status: number
-  statusName: string
-  deadline: string
-  payTime?: string
-  createTime: string
-}
-
-interface FeeItem {
-  id: number
-  itemName: string
-  itemCode: string
-}
-
-interface Community {
-  id: number
-  name: string
-}
 
 // ============================================================
 // 状态
@@ -203,114 +193,93 @@ const router = useRouter()
 const loading = ref(false)
 const list = ref<BillItem[]>([])
 const feeItems = ref<FeeItem[]>([])
-const communities = ref<Community[]>([])
+const owners = ref<OwnerOption[]>([])
 const total = ref(0)
 const totalPages = ref(1)
 
 const statistics = reactive({
   total: 0,
   unpaid: 0,
+  partial: 0,
   paid: 0,
   overdue: 0,
 })
 
 const query = reactive({
   status: undefined as number | undefined,
-  billType: undefined as number | undefined,
+  feeItemId: undefined as number | undefined,
   keyword: '',
-  startDate: '',
-  endDate: '',
-  pageNum: 1,
-  pageSize: 10,
+  startTime: '',
+  endTime: '',
+  page: 1,
+  size: 10,
 })
 
 const generateDialog = reactive({
   visible: false,
-  communityId: 0,
   feeItemId: 0,
-  period: '',
-  deadline: '',
+  ownerIds: [] as number[],
+  billPeriod: '',
+  billAmount: 0,
+  payDeadline: '',
   submitting: false,
 })
-
-// ============================================================
-// Mock 数据
-// ============================================================
-
-const mockBillList: BillItem[] = [
-  { id: 1, billNo: 'ZD20260705001', ownerName: '张三', houseInfo: 'A栋1单元101', itemName: '物业管理费', itemType: 1, amount: 320.50, status: 0, statusName: '待缴费', deadline: '2026-07-25 23:59:59', createTime: '2026-07-01 08:00:00' },
-  { id: 2, billNo: 'ZD20260705002', ownerName: '张三', houseInfo: 'A栋1单元101', itemName: '水费', itemType: 2, amount: 45.80, status: 0, statusName: '待缴费', deadline: '2026-07-15 23:59:59', createTime: '2026-07-01 08:00:00' },
-  { id: 3, billNo: 'ZD20260705003', ownerName: '李四', houseInfo: 'A栋1单元102', itemName: '物业管理费', itemType: 1, amount: 320.50, status: 1, statusName: '已缴费', deadline: '2026-07-25 23:59:59', payTime: '2026-07-05 10:00:00', createTime: '2026-07-01 08:00:00' },
-  { id: 4, billNo: 'ZD20260605004', ownerName: '王五', houseInfo: 'B栋2单元201', itemName: '物业管理费', itemType: 1, amount: 320.50, status: 2, statusName: '已逾期', deadline: '2026-06-25 23:59:59', createTime: '2026-06-01 08:00:00' },
-  { id: 5, billNo: 'ZD20260605005', ownerName: '王五', houseInfo: 'B栋2单元201', itemName: '车位管理费', itemType: 4, amount: 200.00, status: 1, statusName: '已缴费', deadline: '2026-06-25 23:59:59', payTime: '2026-06-20 14:30:00', createTime: '2026-06-01 08:00:00' },
-]
-
-const mockFeeItems: FeeItem[] = [
-  { id: 1, itemName: '物业管理费', itemCode: 'PROPERTY_FEE' },
-  { id: 2, itemName: '水费', itemCode: 'WATER_FEE' },
-  { id: 3, itemName: '电费', itemCode: 'ELECTRIC_FEE' },
-  { id: 4, itemName: '车位管理费', itemCode: 'PARKING_FEE' },
-]
-
-const mockCommunities: Community[] = [
-  { id: 1, name: '翠湖花园' },
-  { id: 2, name: '阳光新城' },
-  { id: 3, name: '滨江御景' },
-]
 
 // ============================================================
 // 方法
 // ============================================================
 
+const formatHouse = (row: BillItem): string => {
+  const parts = [row.buildingName, row.houseNumber].filter(Boolean)
+  return parts.length ? parts.join(' ') : '-'
+}
+
 const loadFeeItems = async () => {
   try {
-    // 接口：GET /api/v1/admin/fee-items/all
-    // const { data } = await getAllFeeItems()
-    // feeItems.value = data
-    feeItems.value = mockFeeItems
+    const { data } = await getAllFeeItems()
+    feeItems.value = data || []
   } catch (error) {
     console.error('加载费用项目失败:', error)
   }
 }
 
-const loadCommunities = async () => {
+const loadOwners = async () => {
   try {
-    // 接口：GET /api/v1/admin/communities/all
-    // const { data } = await getAllCommunities()
-    // communities.value = data
-    communities.value = mockCommunities
+    const { data } = await getOwnerList()
+    owners.value = data || []
   } catch (error) {
-    console.error('加载小区失败:', error)
+    console.error('加载业主列表失败:', error)
+  }
+}
+
+const loadStatistics = async () => {
+  try {
+    const { data } = await getBillStatusStats()
+    statistics.unpaid = data?.['待缴费'] ?? 0
+    statistics.partial = data?.['部分缴费'] ?? 0
+    statistics.paid = data?.['已缴费'] ?? 0
+    statistics.overdue = data?.['已逾期'] ?? 0
+    statistics.total = statistics.unpaid + statistics.partial + statistics.paid + statistics.overdue
+  } catch (error) {
+    console.error('加载统计数据失败:', error)
   }
 }
 
 const loadData = async () => {
   loading.value = true
   try {
-    // 接口：GET /api/v1/admin/bills
-    // const { data } = await getAdminBills(query)
-
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    let data = [...mockBillList]
-    if (query.status !== undefined) {
-      data = data.filter((item) => item.status === query.status)
+    const params = {
+      ...query,
+      feeItemId: query.feeItemId,
+      status: query.status,
+      keyword: query.keyword || undefined,
+      startTime: query.startTime || undefined,
+      endTime: query.endTime || undefined,
     }
-    if (query.billType !== undefined) {
-      data = data.filter((item) => item.itemType === query.billType)
-    }
-    if (query.keyword) {
-      const kw = query.keyword.toLowerCase()
-      data = data.filter((item) =>
-        item.billNo.toLowerCase().includes(kw) ||
-        item.itemName.includes(kw) ||
-        (item.ownerName && item.ownerName.includes(kw))
-      )
-    }
-    total.value = data.length
-    totalPages.value = Math.ceil(total.value / query.pageSize)
-    const start = (query.pageNum - 1) * query.pageSize
-    list.value = data.slice(start, start + query.pageSize)
-    updateStatistics(data)
+    const { data } = await getAdminBills(params)
+    list.value = data?.records || []
+    total.value = data?.total || 0
+    totalPages.value = data?.pages || 1
   } catch (error) {
     console.error('加载失败:', error)
   } finally {
@@ -318,32 +287,25 @@ const loadData = async () => {
   }
 }
 
-const updateStatistics = (data: BillItem[]) => {
-  statistics.total = data.length
-  statistics.unpaid = data.filter((i) => i.status === 0).length
-  statistics.paid = data.filter((i) => i.status === 1).length
-  statistics.overdue = data.filter((i) => i.status === 2).length
-}
-
 const setStatusFilter = (status: number | undefined) => {
   query.status = status
-  query.pageNum = 1
+  query.page = 1
   loadData()
 }
 
 const changePage = (page: number) => {
   if (page < 1 || page > totalPages.value) return
-  query.pageNum = page
+  query.page = page
   loadData()
 }
 
 const handleReset = () => {
   query.status = undefined
-  query.billType = undefined
+  query.feeItemId = undefined
   query.keyword = ''
-  query.startDate = ''
-  query.endDate = ''
-  query.pageNum = 1
+  query.startTime = ''
+  query.endTime = ''
+  query.page = 1
   loadData()
 }
 
@@ -352,34 +314,35 @@ const handleViewDetail = (row: BillItem) => {
 }
 
 const openGenerateDialog = () => {
-  generateDialog.communityId = 0
   generateDialog.feeItemId = 0
-  generateDialog.period = ''
-  generateDialog.deadline = ''
+  generateDialog.ownerIds = []
+  generateDialog.billPeriod = ''
+  generateDialog.billAmount = 0
+  generateDialog.payDeadline = ''
   generateDialog.visible = true
 }
 
 const handleGenerate = async () => {
-  if (!generateDialog.communityId) { alert('请选择小区'); return }
   if (!generateDialog.feeItemId) { alert('请选择费用项目'); return }
-  if (!generateDialog.period) { alert('请选择账单周期'); return }
-  if (!generateDialog.deadline) { alert('请选择截止日期'); return }
+  if (!generateDialog.ownerIds.length) { alert('请至少选择一个业主'); return }
+  if (!generateDialog.billPeriod) { alert('请选择账单周期'); return }
+  if (!generateDialog.billAmount || generateDialog.billAmount <= 0) { alert('请输入有效的账单金额'); return }
+  if (!generateDialog.payDeadline) { alert('请选择截止日期'); return }
 
   generateDialog.submitting = true
   try {
-    // 接口：POST /api/v1/admin/bills/generate
-    // await generateBills({
-    //   communityId: generateDialog.communityId,
-    //   feeItemId: generateDialog.feeItemId,
-    //   period: generateDialog.period,
-    //   deadline: generateDialog.deadline,
-    // })
-
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    await generateBills({
+      feeItemId: generateDialog.feeItemId,
+      ownerIds: generateDialog.ownerIds,
+      billPeriod: generateDialog.billPeriod,
+      billAmount: generateDialog.billAmount,
+      payDeadline: generateDialog.payDeadline,
+    })
     generateDialog.visible = false
     loadData()
+    loadStatistics()
     alert('账单生成成功！')
-  } catch (error) {
+  } catch {
     alert('生成失败')
   } finally {
     generateDialog.submitting = false
@@ -389,11 +352,11 @@ const handleGenerate = async () => {
 const handleDelete = async (row: BillItem) => {
   if (!confirm(`确定要删除账单「${row.billNo}」吗？`)) return
   try {
-    // 接口：DELETE /api/v1/admin/bills/{id}
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    await deleteBill(row.id)
     loadData()
+    loadStatistics()
     alert('删除成功')
-  } catch (error) {
+  } catch {
     alert('删除失败')
   }
 }
@@ -401,15 +364,17 @@ const handleDelete = async (row: BillItem) => {
 const getStatusClass = (status: number): string => {
   const map: Record<number, string> = {
     0: 'status-badge--warning',
-    1: 'status-badge--success',
-    2: 'status-badge--danger',
+    1: 'status-badge--primary',
+    2: 'status-badge--success',
+    3: 'status-badge--danger',
   }
   return map[status] || ''
 }
 
 onMounted(async () => {
   await loadFeeItems()
-  await loadCommunities()
+  await loadOwners()
+  await loadStatistics()
   await loadData()
 })
 </script>
@@ -547,6 +512,10 @@ onMounted(async () => {
   background: #fef2f2;
   color: #dc2626;
 }
+.status-badge--primary {
+  background: #dbeafe;
+  color: #2563eb;
+}
 
 .manage-page__pagination {
   display: flex;
@@ -571,6 +540,33 @@ onMounted(async () => {
   background: #eff6ff;
   font-size: 13px;
   color: #2563eb;
+}
+.owner-select {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  background: var(--color-bg);
+}
+.owner-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 14px;
+  cursor: pointer;
+}
+.owner-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.owner-select__empty {
+  margin: 0;
+  padding: 8px 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
 }
 .form-required {
   color: #dc2626;

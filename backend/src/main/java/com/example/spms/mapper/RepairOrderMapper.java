@@ -25,7 +25,8 @@ public interface RepairOrderMapper extends BaseMapper<RepairOrder> {
     /**
      * 分页查询报修工单（关联业主、房屋、维修人员信息）
      */
-    IPage<Map<String, Object>> selectRepairOrderPage(Page<?> page, 
+    IPage<Map<String, Object>> selectRepairOrderPage(Page<?> page,
+                                                      @Param("keyword") String keyword,
                                                       @Param("orderNo") String orderNo,
                                                       @Param("status") Integer status,
                                                       @Param("repairType") String repairType,

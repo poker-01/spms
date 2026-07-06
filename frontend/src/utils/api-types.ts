@@ -180,11 +180,13 @@ export interface OwnerBill {
 export interface OwnerRepair {
   id: number
   orderNo: string
-  repairType: number
+  repairType: string
+  repairTypeName: string
   repairDesc: string
   repairPhone: string
   priority: number
   status: number
+  statusName: string
   repairCost?: number
   evaluateScore?: number
   evaluateComment?: string
@@ -196,10 +198,12 @@ export interface OwnerComplaint {
   id: number
   complaintNo: string
   type: number
+  typeName: string
   title: string
   content: string
   contactPhone?: string
   status: number
+  statusName: string
   replyContent?: string
   replyTime?: string
   createTime: string
@@ -207,6 +211,7 @@ export interface OwnerComplaint {
 
 export interface RepairApplyData {
   content: string
+  repairType: number
   contactPhone?: string
 }
 

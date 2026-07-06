@@ -23,11 +23,11 @@
         <span class="stat-card__label">待缴费</span>
         <span class="stat-card__value">{{ statistics.unpaid }}</span>
       </div>
-      <div class="stat-card stat-card--success" :class="{ 'stat-card--active': query.status === 1 }" @click="setStatusFilter(1)">
+      <div class="stat-card stat-card--success" :class="{ 'stat-card--active': query.status === 2 }" @click="setStatusFilter(2)">
         <span class="stat-card__label">已缴费</span>
         <span class="stat-card__value">{{ statistics.paid }}</span>
       </div>
-      <div class="stat-card stat-card--warning" :class="{ 'stat-card--active': query.status === 2 }" @click="setStatusFilter(2)">
+      <div class="stat-card stat-card--warning" :class="{ 'stat-card--active': query.status === 3 }" @click="setStatusFilter(3)">
         <span class="stat-card__label">已逾期</span>
         <span class="stat-card__value">{{ statistics.overdue }}</span>
       </div>
@@ -42,12 +42,6 @@
           placeholder="搜索账单编号/项目名称"
           @keyup.enter="loadData"
         />
-        <select v-model="query.billType" class="form-input" @change="loadData">
-          <option :value="undefined">全部类型</option>
-          <option v-for="item in billTypes" :key="item.value" :value="item.value">
-            {{ item.label }}
-          </option>
-        </select>
         <button class="btn btn-primary" type="button" @click="loadData">查询</button>
         <button class="btn btn-ghost" type="button" @click="handleReset">重置</button>
       </div>
@@ -63,17 +57,17 @@
         v-for="item in list"
         :key="item.id"
         class="bill-card"
-        :class="{ 'bill-card--overdue': item.status === 2 }"
+        :class="{ 'bill-card--overdue': item.status === 3 }"
         @click="handleViewDetail(item)"
       >
         <div class="bill-card__header">
           <div class="bill-card__left">
             <span class="bill-card__no">{{ item.billNo }}</span>
             <span :class="['bill-card__status', getStatusClass(item.status)]">
-              {{ item.statusName }}
+              {{ getStatusName(item.status) }}
             </span>
           </div>
-          <span class="bill-card__amount" :class="{ 'text-danger': item.status === 0 || item.status === 2 }">
+          <span class="bill-card__amount" :class="{ 'text-danger': item.status === 0 || item.status === 3 }">
             ¥{{ item.amount.toFixed(2) }}
           </span>
         </div>
@@ -84,29 +78,17 @@
             <span class="bill-card__value">{{ item.itemName }}</span>
           </div>
           <div class="bill-card__row">
-            <span class="bill-card__label">所属房屋</span>
-            <span class="bill-card__value">{{ item.houseInfo || '-' }}</span>
-          </div>
-          <div class="bill-card__row">
-            <span class="bill-card__label">账单周期</span>
-            <span class="bill-card__value">{{ item.period || '-' }}</span>
-          </div>
-          <div class="bill-card__row">
             <span class="bill-card__label">缴费截止</span>
-            <span class="bill-card__value" :class="{ 'text-danger': item.status === 2 }">
+            <span class="bill-card__value" :class="{ 'text-danger': item.status === 3 }">
               {{ formatDate(item.deadline) }}
             </span>
-          </div>
-          <div v-if="item.payTime" class="bill-card__row">
-            <span class="bill-card__label">缴费时间</span>
-            <span class="bill-card__value">{{ formatDate(item.payTime) }}</span>
           </div>
         </div>
 
         <div class="bill-card__footer" @click.stop>
-          <!-- 待缴费 → 去缴费 -->
+          <!-- 待缴费/部分缴费 → 去缴费 -->
           <button
-            v-if="item.status === 0"
+            v-if="item.status === 0 || item.status === 1"
             class="btn btn-primary"
             type="button"
             @click="openPayDialog(item)"
@@ -115,7 +97,7 @@
           </button>
           <!-- 已逾期 → 去缴费（催缴） -->
           <button
-            v-if="item.status === 2"
+            v-if="item.status === 3"
             class="btn btn-danger"
             type="button"
             @click="openPayDialog(item)"
@@ -124,7 +106,7 @@
           </button>
           <!-- 已缴费 → 查看详情 -->
           <button
-            v-if="item.status === 1"
+            v-if="item.status === 2"
             class="btn btn-ghost"
             type="button"
             @click="handleViewDetail(item)"
@@ -214,34 +196,12 @@
 import { onMounted, reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
+import { getOwnerBills, payOwnerBill } from '@/api/owner'
+import type { OwnerBill } from '@/utils/api-types'
 
 defineOptions({
   name: 'OwnerBills',
 })
-
-// ============================================================
-// 类型定义
-// ============================================================
-
-interface BillItem {
-  id: number
-  billNo: string
-  itemName: string
-  itemType: number
-  amount: number
-  status: number // 0-待缴费 1-已缴费 2-已逾期
-  statusName: string
-  houseInfo?: string
-  period?: string
-  deadline: string
-  payTime?: string
-  createTime: string
-}
-
-interface DictItem {
-  value: number
-  label: string
-}
 
 // ============================================================
 // 状态
@@ -249,8 +209,8 @@ interface DictItem {
 
 const router = useRouter()
 const loading = ref(false)
-const list = ref<BillItem[]>([])
-const billTypes = ref<DictItem[]>([])
+const allList = ref<OwnerBill[]>([])
+const list = ref<OwnerBill[]>([])
 const total = ref(0)
 const totalPages = ref(1)
 
@@ -258,43 +218,45 @@ const totalPages = ref(1)
 const statistics = reactive({
   total: 0,
   unpaid: 0,
+  partial: 0,
   paid: 0,
   overdue: 0,
 })
 
 // 汇总金额
 const unpaidTotal = computed(() => {
-  return list.value.filter((item) => item.status === 0 || item.status === 2)
+  return list.value
+    .filter((item) => item.status === 0 || item.status === 3)
     .reduce((sum, item) => sum + item.amount, 0)
 })
 
 const paidTotal = computed(() => {
-  return list.value.filter((item) => item.status === 1)
+  return list.value
+    .filter((item) => item.status === 2)
     .reduce((sum, item) => sum + item.amount, 0)
 })
 
 // 查询参数
 const query = reactive({
   status: undefined as number | undefined,
-  billType: undefined as number | undefined,
   keyword: '',
   pageNum: 1,
   pageSize: 10,
 })
 
-// 支付方式
+// 支付方式（与后端 PayMethod 枚举 code 对应：0-现金 1-银行转账 2-微信支付 3-支付宝）
 const payMethods = [
-  { value: 'wechat', label: '微信支付', icon: '💚' },
-  { value: 'alipay', label: '支付宝', icon: '💙' },
-  { value: 'cash', label: '现金', icon: '💰' },
-  { value: 'bank', label: '银行转账', icon: '🏦' },
+  { value: 2, label: '微信支付', icon: '💚' },
+  { value: 3, label: '支付宝', icon: '💙' },
+  { value: 0, label: '现金', icon: '💰' },
+  { value: 1, label: '银行转账', icon: '🏦' },
 ]
 
 // 缴费弹窗
 const payDialog = reactive({
   visible: false,
-  item: null as BillItem | null,
-  payMethod: 'wechat',
+  item: null as OwnerBill | null,
+  payMethod: 2,
   submitting: false,
 })
 
@@ -305,118 +267,20 @@ const paySuccess = reactive({
 })
 
 // ============================================================
-// Mock 数据
-// ============================================================
-
-const mockList: BillItem[] = [
-  {
-    id: 1,
-    billNo: 'ZD20260705001',
-    itemName: '物业管理费',
-    itemType: 1,
-    amount: 320.50,
-    status: 0,
-    statusName: '待缴费',
-    houseInfo: 'A栋1单元101',
-    period: '2026年7月',
-    deadline: '2026-07-25 23:59:59',
-    createTime: '2026-07-01 08:00:00',
-  },
-  {
-    id: 2,
-    billNo: 'ZD20260705002',
-    itemName: '水费',
-    itemType: 2,
-    amount: 45.80,
-    status: 0,
-    statusName: '待缴费',
-    houseInfo: 'A栋1单元101',
-    period: '2026年6月',
-    deadline: '2026-07-15 23:59:59',
-    createTime: '2026-07-01 08:00:00',
-  },
-  {
-    id: 3,
-    billNo: 'ZD20260605003',
-    itemName: '电费',
-    itemType: 3,
-    amount: 128.60,
-    status: 1,
-    statusName: '已缴费',
-    houseInfo: 'A栋1单元101',
-    period: '2026年6月',
-    deadline: '2026-06-25 23:59:59',
-    payTime: '2026-06-20 14:30:00',
-    createTime: '2026-06-01 08:00:00',
-  },
-  {
-    id: 4,
-    billNo: 'ZD20260505004',
-    itemName: '物业管理费',
-    itemType: 1,
-    amount: 320.50,
-    status: 2,
-    statusName: '已逾期',
-    houseInfo: 'A栋1单元101',
-    period: '2026年5月',
-    deadline: '2026-05-25 23:59:59',
-    createTime: '2026-05-01 08:00:00',
-  },
-  {
-    id: 5,
-    billNo: 'ZD20260505005',
-    itemName: '车位管理费',
-    itemType: 4,
-    amount: 200.00,
-    status: 1,
-    statusName: '已缴费',
-    houseInfo: 'A栋1单元101',
-    period: '2026年5月',
-    deadline: '2026-05-25 23:59:59',
-    payTime: '2026-05-18 10:20:00',
-    createTime: '2026-05-01 08:00:00',
-  },
-  {
-    id: 6,
-    billNo: 'ZD20260705006',
-    itemName: '燃气费',
-    itemType: 5,
-    amount: 67.30,
-    status: 0,
-    statusName: '待缴费',
-    houseInfo: 'A栋1单元101',
-    period: '2026年6月',
-    deadline: '2026-07-20 23:59:59',
-    createTime: '2026-07-01 08:00:00',
-  },
-]
-
-// ============================================================
 // 方法
 // ============================================================
 
 /**
- * 加载字典数据
- * 接口：GET /api/v1/dict/bill_type
+ * 获取状态名称（后端 BillStatus：0-待缴费 1-部分缴费 2-已缴费 3-已逾期）
  */
-const loadDict = async () => {
-  try {
-    // 接口：GET /api/v1/dict/bill_type
-    // const { data } = await getDict('bill_type')
-    // billTypes.value = data
-
-    // 临时Mock（后端接口完成后删除）
-    billTypes.value = [
-      { value: 1, label: '物业管理费' },
-      { value: 2, label: '水费' },
-      { value: 3, label: '电费' },
-      { value: 4, label: '车位管理费' },
-      { value: 5, label: '燃气费' },
-      { value: 6, label: '其他' },
-    ]
-  } catch (error) {
-    console.error('加载字典失败:', error)
+const getStatusName = (status: number): string => {
+  const map: Record<number, string> = {
+    0: '待缴费',
+    1: '部分缴费',
+    2: '已缴费',
+    3: '已逾期',
   }
+  return map[status] || '未知'
 }
 
 /**
@@ -426,38 +290,29 @@ const loadDict = async () => {
 const loadData = async () => {
   loading.value = true
   try {
-    // 接口：GET /api/v1/owner/bills
-    // 参数：{ status?, billType?, keyword?, pageNum?, pageSize? }
-    // const { data } = await getOwnerBills(query)
-    // list.value = data.records
-    // total.value = data.total
-    // totalPages.value = data.pages
+    const { data } = await getOwnerBills()
+    allList.value = data || []
 
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 300))
-
-    let data = [...mockList]
-    if (query.status !== undefined) {
-      data = data.filter((item) => item.status === query.status)
-    }
-    if (query.billType !== undefined) {
-      data = data.filter((item) => item.itemType === query.billType)
-    }
-    if (query.keyword) {
-      const kw = query.keyword.toLowerCase()
-      data = data.filter(
-        (item) =>
+    const filtered = allList.value.filter((item) => {
+      if (query.status !== undefined && item.status !== query.status) {
+        return false
+      }
+      if (query.keyword) {
+        const kw = query.keyword.toLowerCase()
+        return (
           item.billNo.toLowerCase().includes(kw) ||
-          item.itemName.includes(kw),
-      )
-    }
+          item.itemName.includes(kw)
+        )
+      }
+      return true
+    })
 
-    total.value = data.length
+    total.value = filtered.length
     totalPages.value = Math.ceil(total.value / query.pageSize)
     const start = (query.pageNum - 1) * query.pageSize
-    list.value = data.slice(start, start + query.pageSize)
+    list.value = filtered.slice(start, start + query.pageSize)
 
-    updateStatistics(data)
+    updateStatistics(allList.value)
   } catch (error) {
     console.error('加载账单列表失败:', error)
   } finally {
@@ -468,11 +323,12 @@ const loadData = async () => {
 /**
  * 更新统计
  */
-const updateStatistics = (data: BillItem[]) => {
+const updateStatistics = (data: OwnerBill[]) => {
   statistics.total = data.length
   statistics.unpaid = data.filter((i) => i.status === 0).length
-  statistics.paid = data.filter((i) => i.status === 1).length
-  statistics.overdue = data.filter((i) => i.status === 2).length
+  statistics.partial = data.filter((i) => i.status === 1).length
+  statistics.paid = data.filter((i) => i.status === 2).length
+  statistics.overdue = data.filter((i) => i.status === 3).length
 }
 
 /**
@@ -498,7 +354,6 @@ const changePage = (page: number) => {
  */
 const handleReset = () => {
   query.status = undefined
-  query.billType = undefined
   query.keyword = ''
   query.pageNum = 1
   loadData()
@@ -507,16 +362,16 @@ const handleReset = () => {
 /**
  * 查看详情
  */
-const handleViewDetail = (item: BillItem) => {
+const handleViewDetail = (item: OwnerBill) => {
   router.push(`/owner/bills/${item.id}`)
 }
 
 /**
  * 打开缴费弹窗
  */
-const openPayDialog = (item: BillItem) => {
+const openPayDialog = (item: OwnerBill) => {
   payDialog.item = item
-  payDialog.payMethod = 'wechat'
+  payDialog.payMethod = 2
   payDialog.visible = true
 }
 
@@ -526,29 +381,14 @@ const openPayDialog = (item: BillItem) => {
  */
 const handlePay = async () => {
   if (!payDialog.item) return
-  if (!payDialog.payMethod) {
+  if (payDialog.payMethod === undefined) {
     alert('请选择支付方式')
     return
   }
 
   payDialog.submitting = true
   try {
-    // 接口：POST /api/v1/owner/bills/{id}/pay
-    // 请求体：{ payMethod }
-    // await payBill(payDialog.item.id, {
-    //   payMethod: payDialog.payMethod,
-    // })
-
-    // 临时Mock（后端接口完成后删除）
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    // 更新列表中的账单状态
-    const target = list.value.find((b) => b.id === payDialog.item!.id)
-    if (target) {
-      target.status = 1
-      target.statusName = '已缴费'
-      target.payTime = new Date().toISOString().replace('T', ' ').slice(0, 19)
-    }
+    await payOwnerBill(payDialog.item.id, payDialog.payMethod)
 
     // 保存账单号用于成功提示
     paySuccess.billNo = payDialog.item.billNo
@@ -556,7 +396,7 @@ const handlePay = async () => {
     payDialog.visible = false
     paySuccess.visible = true
 
-    // 刷新统计数据
+    // 刷新列表
     await loadData()
   } catch (error) {
     console.error('缴费失败:', error)
@@ -572,8 +412,9 @@ const handlePay = async () => {
 const getStatusClass = (status: number): string => {
   const map: Record<number, string> = {
     0: 'status--warning',
-    1: 'status--success',
-    2: 'status--danger',
+    1: 'status--primary',
+    2: 'status--success',
+    3: 'status--danger',
   }
   return map[status] || ''
 }
@@ -582,9 +423,8 @@ const getStatusClass = (status: number): string => {
 // 生命周期
 // ============================================================
 
-onMounted(async () => {
-  await loadDict()
-  await loadData()
+onMounted(() => {
+  loadData()
 })
 </script>
 
@@ -753,6 +593,10 @@ onMounted(async () => {
 .status--warning {
   background: #fef3c7;
   color: #d97706;
+}
+.status--primary {
+  background: #dbeafe;
+  color: #2563eb;
 }
 .status--success {
   background: #d1fae5;

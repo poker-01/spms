@@ -57,7 +57,7 @@
         </div>
 
         <!-- 已取消 -->
-        <div v-if="detail.status === 3" class="detail-card detail-card--cancelled">
+        <div v-if="detail.status === 4" class="detail-card detail-card--cancelled">
           <h3 class="detail-card__title">⚠️ 已取消</h3>
           <p class="detail-card__hint">该投诉已被取消，如有疑问请联系物业。</p>
         </div>
@@ -75,8 +75,8 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
-import { getComplaintDetail, cancelComplaint } from '@/api/complaint'
-import type { ComplaintVO } from '@/api/complaint'
+import { getOwnerComplaintDetail, cancelOwnerComplaint } from '@/api/owner'
+import type { OwnerComplaint } from '@/utils/api-types'
 
 defineOptions({
   name: 'OwnerComplaintDetail',
@@ -89,7 +89,7 @@ defineOptions({
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
-const detail = ref<ComplaintVO | null>(null)
+const detail = ref<OwnerComplaint | null>(null)
 
 // ============================================================
 // 方法
@@ -97,7 +97,7 @@ const detail = ref<ComplaintVO | null>(null)
 
 /**
  * 加载投诉详情
- * 接口：GET /api/v1/complaints/{complaintId}
+ * 接口：GET /api/v1/owner/complaints/{id}
  */
 const loadDetail = async () => {
   const complaintId = Number(route.params.id)
@@ -109,7 +109,7 @@ const loadDetail = async () => {
 
   loading.value = true
   try {
-    const { data } = await getComplaintDetail(complaintId)
+    const { data } = await getOwnerComplaintDetail(complaintId)
     detail.value = data
   } catch (error) {
     console.error('加载投诉详情失败:', error)
@@ -136,8 +136,8 @@ const handleCancel = async () => {
   if (!confirm('确定取消该投诉吗？')) return
 
   try {
-    await cancelComplaint(detail.value.id)
-    detail.value.status = 3
+    await cancelOwnerComplaint(detail.value.id)
+    detail.value.status = 4
     detail.value.statusName = '已取消'
     alert('已取消投诉')
   } catch (error) {
@@ -155,6 +155,7 @@ const getStatusClass = (status: number): string => {
     1: 'status--primary',
     2: 'status--success',
     3: 'status--info',
+    4: 'status--info',
   }
   return map[status] || ''
 }
