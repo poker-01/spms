@@ -49,6 +49,7 @@ public class RepairOrderServiceImpl extends ServiceImpl<RepairOrderMapper, Repai
         Page<Map<String, Object>> page = new Page<>(request.getPage(), request.getSize());
         IPage<Map<String, Object>> result = repairOrderMapper.selectRepairOrderPage(
                 page,
+                request.getKeyword(),
                 request.getOrderNo(),
                 request.getStatus(),
                 request.getRepairType(),

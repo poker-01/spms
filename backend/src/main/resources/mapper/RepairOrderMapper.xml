@@ -45,6 +45,10 @@
         LEFT JOIN house_info h ON r.house_id = h.id AND h.is_deleted = 0
         LEFT JOIN sys_user_info u ON r.assignee_id = u.id AND u.is_deleted = 0
         WHERE r.is_deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND (r.order_no LIKE CONCAT('%', #{keyword}, '%')
+                 OR r.repair_desc LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
         <if test="orderNo != null and orderNo != ''">
             AND r.order_no LIKE CONCAT('%', #{orderNo}, '%')
         </if>

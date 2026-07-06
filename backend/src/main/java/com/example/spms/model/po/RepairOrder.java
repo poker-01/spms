@@ -41,6 +41,8 @@ public class RepairOrder implements Serializable {
 
     private BigDecimal repairCost;
 
+    private String repairResult;
+
     private Integer evaluateScore;
 
     private String evaluateComment;

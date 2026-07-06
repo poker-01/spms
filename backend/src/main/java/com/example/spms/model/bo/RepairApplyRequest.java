@@ -1,6 +1,7 @@
 package com.example.spms.model.bo;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
@@ -12,7 +13,8 @@ public class RepairApplyRequest {
     @NotBlank(message = "报修内容不能为空")
     private String content;
 
-    private String repairType;
+    @NotNull(message = "报修类型不能为空")
+    private Integer repairType;
 
     private String contactPhone;
 }

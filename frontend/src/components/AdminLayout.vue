@@ -1,3 +1,4 @@
+<!-- src/components/AdminLayout.vue -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -17,10 +18,8 @@ const { logout } = useAuth()
 
 const roleText = computed(() => formatRoleLabels(userStore.userInfo?.roles))
 
-// ============ 菜单展开/折叠控制 ============
 const expandedMenus = ref<Set<number>>(new Set())
 
-/** 切换一级菜单展开状态 */
 const toggleExpand = (menuId: number) => {
   const s = new Set(expandedMenus.value)
   if (s.has(menuId)) {
@@ -31,7 +30,6 @@ const toggleExpand = (menuId: number) => {
   expandedMenus.value = s
 }
 
-/** 判断菜单是否展开 */
 const isExpanded = (menuId: number) => expandedMenus.value.has(menuId)
 
 const isActive = (path?: string) => {
@@ -39,13 +37,11 @@ const isActive = (path?: string) => {
   return route.path === path || route.path.startsWith(path + '/')
 }
 
-/** 判断某个一级菜单下是否有激活的子菜单 */
 const hasActiveChild = (menu: MenuItem) => {
   if (!menu.children) return false
   return menu.children.some((child) => isActive(child.path))
 }
 
-// 路由变化时，自动展开包含当前页面的父菜单
 watch(
   () => route.path,
   () => {
@@ -90,7 +86,6 @@ const handleLogout = async () => {
               'admin-layout__menu-item--has-children': menu.children && menu.children.length > 0,
             }"
           >
-            <!-- 有子菜单的一级：点击切换展开/折叠 -->
             <button
               v-if="menu.children && menu.children.length > 0"
               class="admin-layout__menu-item"
@@ -105,7 +100,6 @@ const handleLogout = async () => {
                 </svg>
               </span>
             </button>
-            <!-- 无子菜单的一级：直接导航 -->
             <button
               v-else
               class="admin-layout__menu-item"
@@ -116,7 +110,6 @@ const handleLogout = async () => {
               <span class="admin-layout__menu-label">{{ menu.name }}</span>
             </button>
 
-            <!-- 二级子菜单（可折叠） -->
             <Transition name="submenu">
               <ul
                 v-if="menu.children && menu.children.length > 0 && isExpanded(menu.id)"
@@ -181,6 +174,7 @@ const handleLogout = async () => {
   background: #1e293b;
   color: #fff;
   overflow-y: auto;
+  z-index: 100;
 }
 
 .admin-layout__brand {
@@ -208,28 +202,43 @@ const handleLogout = async () => {
   font-weight: 700;
 }
 
-.admin-layout__menu ul,
-.admin-layout__submenu {
+.admin-layout__menu ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .admin-layout__menu > ul {
-  padding: 12px;
+  padding: 8px 12px;
 }
 
-.admin-layout__menu-item,
-.admin-layout__submenu-item {
+/* 菜单组标题 */
+.admin-layout__menu-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 6px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.admin-layout__menu-group .admin-layout__menu-icon {
+  font-size: 14px;
+}
+
+.admin-layout__menu-item {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px;
+  padding: 10px 12px;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.75);
   font-size: 14px;
   font-weight: 500;
   text-align: left;
@@ -237,29 +246,59 @@ const handleLogout = async () => {
   transition: all 0.2s;
 }
 
-.admin-layout__menu-item:hover,
-.admin-layout__submenu-item:hover {
+.admin-layout__menu-item:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
 }
 
 .admin-layout__menu-item--active > .admin-layout__menu-item,
-.admin-layout__submenu-item--active > .admin-layout__submenu-item {
-  background: var(--color-primary);
+.admin-layout__menu-item--active > .admin-layout__menu-group {
   color: #fff;
+}
+
+.admin-layout__menu-item--active > .admin-layout__menu-item {
+  background: var(--color-primary);
 }
 
 .admin-layout__menu-icon {
   font-size: 16px;
+  flex-shrink: 0;
 }
 
+.admin-layout__menu-label {
+  flex: 1;
+}
+
+/* 子菜单 */
 .admin-layout__submenu {
   padding-left: 20px;
+  margin-bottom: 4px;
 }
 
 .admin-layout__submenu-item {
-  padding: 10px 12px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.admin-layout__submenu-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.admin-layout__submenu-item--active .admin-layout__submenu-item {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
 }
 
 /* ===== 菜单箭头指示器 ===== */
@@ -388,5 +427,19 @@ const handleLogout = async () => {
 
 .admin-layout__overview-icon {
   font-size: 16px;
+}
+
+/* 滚动条 */
+.admin-layout__sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.admin-layout__sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.admin-layout__sidebar::-webkit-scrollbar-track {
+  background: transparent;
 }
 </style>

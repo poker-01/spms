@@ -25,7 +25,3 @@ public interface SysUserInfoMapper extends BaseMapper<SysUserInfo> {
 
     List<SysPermissionInfo> selectPermissionsByUserId(@Param("userId") Long userId);
 }
-
-
-
-

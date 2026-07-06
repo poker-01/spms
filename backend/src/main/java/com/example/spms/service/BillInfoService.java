@@ -40,6 +40,11 @@ public interface BillInfoService extends IService<BillInfo> {
     void payBill(Long operatorId, BillPayRequest request);
 
     /**
+     * 删除账单（仅待缴费状态可删除）
+     */
+    void deleteBill(Long billId);
+
+    /**
      * 统计各状态账单数量
      */
     Object countByStatus();
