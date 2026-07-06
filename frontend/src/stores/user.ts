@@ -4,6 +4,22 @@ import type { MenuItem, UserInfo } from '@/utils/api-types'
 import { getMenus, getUserInfo as fetchUserInfoApi } from '@/api/auth'
 import { getToken, removeToken, setToken } from '@/utils/auth'
 
+const collectPermissionCodes = (menus: MenuItem[]): string[] => {
+  const codes: string[] = []
+  const walk = (items: MenuItem[]) => {
+    for (const item of items) {
+      if (item.permissionCode) {
+        codes.push(item.permissionCode)
+      }
+      if (item.children && item.children.length > 0) {
+        walk(item.children)
+      }
+    }
+  }
+  walk(menus)
+  return codes
+}
+
 export const useUserStore = defineStore('user', () => {
   const token = ref<string | null>(getToken())
   const userInfo = ref<UserInfo | null>(null)
@@ -29,7 +45,17 @@ export const useUserStore = defineStore('user', () => {
 
   const fetchMenus = async () => {
     const { data } = await getMenus()
-    menus.value = data ?? []
+    const menuList = data ?? []
+    menus.value = menuList
+
+    // 当后端 permission_str 为空时，用菜单 permissionCode 补齐权限列表
+    if (userInfo.value) {
+      const menuPermissions = collectPermissionCodes(menuList)
+      const existing = new Set(userInfo.value.permissions ?? [])
+      menuPermissions.forEach((code) => existing.add(code))
+      userInfo.value.permissions = Array.from(existing)
+    }
+
     return data
   }
 

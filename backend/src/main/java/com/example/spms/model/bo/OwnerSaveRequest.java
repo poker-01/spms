@@ -1,11 +1,9 @@
 package com.example.spms.model.bo;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-/**
- * 新增业主请求
- */
 @Data
 public class OwnerSaveRequest {
 
@@ -19,4 +17,7 @@ public class OwnerSaveRequest {
     private Integer gender;
     private String email;
     private Integer status;
+
+    @NotNull(message = "关联房屋不能为空")
+    private Long houseId;
 }

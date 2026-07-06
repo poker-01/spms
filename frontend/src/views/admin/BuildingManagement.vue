@@ -1,53 +1,17 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  pageBuildings,
+  saveBuilding,
+  updateBuilding,
+  deleteBuilding,
+  getBuilding,
+} from '@/api/building'
+import { listCommunities } from '@/api/community'
+import type { BuildingSave, BuildingUpdate } from '@/utils/api-types'
 
 // ============ API 接口 ============
-const buildingApi = {
-  // 获取楼栋列表（分页）
-  getList: (params: any) => {
-    // return request.get('/api/v1/buildings/page', { params })
-    return Promise.resolve({ data: { list: [], total: 0 } })
-  },
-  // 查询全部楼栋（下拉列表用）
-  getListAll: () => {
-    // return request.get('/api/v1/buildings/list')
-    return Promise.resolve({ data: [] })
-  },
-  // 查询某小区所有楼栋（下拉列表用）
-  getByCommunity: (communityId: number) => {
-    // return request.get(`/api/v1/buildings/by-community/${communityId}`)
-    return Promise.resolve({ data: [] })
-  },
-  // 新增楼栋
-  create: (data: any) => {
-    // return request.post('/api/v1/buildings', data)
-    return Promise.resolve({ data: {} })
-  },
-  // 更新楼栋
-  update: (data: any) => {
-    // return request.put('/api/v1/buildings', data)
-    return Promise.resolve({ data: {} })
-  },
-  // 删除楼栋
-  delete: (id: number) => {
-    // return request.delete(`/api/v1/buildings/${id}`)
-    return Promise.resolve({ data: {} })
-  },
-  // 楼栋详情
-  getDetail: (id: number) => {
-    // return request.get(`/api/v1/buildings/${id}`)
-    return Promise.resolve({ data: {} })
-  }
-}
-
-const communityApi = {
-  // 获取小区下拉列表
-  getList: () => {
-    // return request.get('/api/v1/communities/list')
-    return Promise.resolve({ data: [] })
-  }
-}
 // =========================================
 
 const loading = ref(false)
@@ -84,7 +48,7 @@ const form = reactive({
 
 const loadCommunityOptions = async () => {
   try {
-    const res = await communityApi.getList()
+    const res = await listCommunities()
     communityOptions.value = res.data || []
     if (communityOptions.value.length > 0) {
       communityId.value = communityOptions.value[0].id
@@ -98,13 +62,13 @@ const loadData = async () => {
   loading.value = true
   try {
     const params = {
-      page: pagination.current,
+      pageNum: pagination.current,
       pageSize: pagination.pageSize,
       buildingName: searchForm.buildingName,
       communityId: searchForm.communityId || communityId.value
     }
-    const res = await buildingApi.getList(params)
-    tableData.value = res.data.list || []
+    const res = await pageBuildings(params)
+    tableData.value = res.data.records || []
     pagination.total = res.data.total || 0
   } catch (error) {
     ElMessage.error('加载数据失败')
@@ -151,7 +115,7 @@ const handleEdit = async (row: any) => {
   isEdit.value = true
   dialogTitle.value = '编辑楼栋'
   try {
-    const res = await buildingApi.getDetail(row.id)
+    const res = await getBuilding(row.id)
     Object.assign(form, res.data)
     dialogVisible.value = true
   } catch (error) {
@@ -166,7 +130,7 @@ const handleDelete = (row: any) => {
     type: 'warning'
   }).then(async () => {
     try {
-      await buildingApi.delete(row.id)
+      await deleteBuilding(row.id)
       ElMessage.success('删除成功')
       loadData()
     } catch (error) {
@@ -178,10 +142,10 @@ const handleDelete = (row: any) => {
 const handleSubmit = async () => {
   try {
     if (isEdit.value) {
-      await buildingApi.update(form)
+      await updateBuilding(form as BuildingUpdate)
       ElMessage.success('更新成功')
     } else {
-      await buildingApi.create(form)
+      await saveBuilding(form as BuildingSave)
       ElMessage.success('新增成功')
     }
     dialogVisible.value = false

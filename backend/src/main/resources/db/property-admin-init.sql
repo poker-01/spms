@@ -33,6 +33,92 @@ VALUES
   ('system:permission:edit', '编辑权限', 2, @permission_id, NULL, NULL, 'system:permission:edit', 2, 0, 0, 0),
   ('system:permission:delete', '删除权限', 2, @permission_id, NULL, NULL, 'system:permission:delete', 3, 0, 0, 0);
 
+-- =====================================================
+-- 补全业务模块 CRUD 按钮权限（Controller @PreAuthorize 所需）
+-- =====================================================
+
+-- 1) 修复"系统总览"菜单：路径指向 /admin/home，确保可点击导航
+UPDATE sys_permission_info SET permission_path = '/admin/home', permission_str = 'dashboard:view'
+WHERE permission_code = 'dashboard' AND is_deleted = 0 AND (permission_path = '/dashboard' OR permission_str IS NULL OR permission_str = '');
+
+-- 隐藏旧版系统管理子菜单（已被 235-237 替代），避免菜单重复
+UPDATE sys_permission_info SET visible = 0
+WHERE id IN (21, 22, 23) AND is_deleted = 0;
+
+-- 为已有菜单级权限补上 permission_str（用于 query 检查）
+UPDATE sys_permission_info SET permission_str = 'community:query' WHERE permission_code = 'community:community' AND is_deleted = 0 AND (permission_str IS NULL OR permission_str = '');
+UPDATE sys_permission_info SET permission_str = 'building:query' WHERE permission_code = 'community:building' AND is_deleted = 0 AND (permission_str IS NULL OR permission_str = '');
+UPDATE sys_permission_info SET permission_str = 'house:query' WHERE permission_code = 'community:house' AND is_deleted = 0 AND (permission_str IS NULL OR permission_str = '');
+UPDATE sys_permission_info SET permission_str = 'owner:query' WHERE permission_code = 'community:owner' AND is_deleted = 0 AND (permission_str IS NULL OR permission_str = '');
+UPDATE sys_permission_info SET permission_str = 'repair:query' WHERE permission_code = 'property:repair' AND is_deleted = 0 AND (permission_str IS NULL OR permission_str = '');
+UPDATE sys_permission_info SET permission_str = 'complaint:query' WHERE permission_code = 'property:complaint' AND is_deleted = 0 AND (permission_str IS NULL OR permission_str = '');
+UPDATE sys_permission_info SET permission_str = 'finance:fee:query' WHERE permission_code = 'finance:fee' AND is_deleted = 0 AND (permission_str IS NULL OR permission_str = '');
+UPDATE sys_permission_info SET permission_str = 'finance:bill:query' WHERE permission_code = 'finance:bill' AND is_deleted = 0 AND (permission_str IS NULL OR permission_str = '');
+UPDATE sys_permission_info SET permission_str = 'finance:payment:query' WHERE permission_code = 'finance:payment' AND is_deleted = 0 AND (permission_str IS NULL OR permission_str = '');
+
+-- 2) 获取各业务菜单的 ID
+SET @cc_id = (SELECT id FROM sys_permission_info WHERE permission_code = 'community:community' AND is_deleted = 0 LIMIT 1);
+SET @cb_id = (SELECT id FROM sys_permission_info WHERE permission_code = 'community:building' AND is_deleted = 0 LIMIT 1);
+SET @ch_id = (SELECT id FROM sys_permission_info WHERE permission_code = 'community:house' AND is_deleted = 0 LIMIT 1);
+SET @co_id = (SELECT id FROM sys_permission_info WHERE permission_code = 'community:owner' AND is_deleted = 0 LIMIT 1);
+SET @pr_id = (SELECT id FROM sys_permission_info WHERE permission_code = 'property:repair' AND is_deleted = 0 LIMIT 1);
+SET @pc_id = (SELECT id FROM sys_permission_info WHERE permission_code = 'property:complaint' AND is_deleted = 0 LIMIT 1);
+SET @ff_id = (SELECT id FROM sys_permission_info WHERE permission_code = 'finance:fee' AND is_deleted = 0 LIMIT 1);
+SET @fb_id = (SELECT id FROM sys_permission_info WHERE permission_code = 'finance:bill' AND is_deleted = 0 LIMIT 1);
+SET @fp_id = (SELECT id FROM sys_permission_info WHERE permission_code = 'finance:payment' AND is_deleted = 0 LIMIT 1);
+
+-- 3) 小区管理按钮权限
+INSERT IGNORE INTO sys_permission_info (permission_code, permission_name, permission_type, parent_id, permission_str, sort_order, visible, is_deleted, version)
+VALUES
+  ('community:add', '新增小区', 3, @cc_id, 'community:add', 1, 0, 0, 0),
+  ('community:edit', '编辑小区', 3, @cc_id, 'community:edit', 2, 0, 0, 0),
+  ('community:delete', '删除小区', 3, @cc_id, 'community:delete', 3, 0, 0, 0);
+
+-- 4) 楼栋管理按钮权限
+INSERT IGNORE INTO sys_permission_info (permission_code, permission_name, permission_type, parent_id, permission_str, sort_order, visible, is_deleted, version)
+VALUES
+  ('building:add', '新增楼栋', 3, @cb_id, 'building:add', 1, 0, 0, 0),
+  ('building:edit', '编辑楼栋', 3, @cb_id, 'building:edit', 2, 0, 0, 0),
+  ('building:delete', '删除楼栋', 3, @cb_id, 'building:delete', 3, 0, 0, 0);
+
+-- 5) 房屋管理按钮权限
+INSERT IGNORE INTO sys_permission_info (permission_code, permission_name, permission_type, parent_id, permission_str, sort_order, visible, is_deleted, version)
+VALUES
+  ('house:add', '新增房屋', 3, @ch_id, 'house:add', 1, 0, 0, 0),
+  ('house:edit', '编辑房屋', 3, @ch_id, 'house:edit', 2, 0, 0, 0),
+  ('house:delete', '删除房屋', 3, @ch_id, 'house:delete', 3, 0, 0, 0);
+
+-- 6) 业主管理按钮权限
+INSERT IGNORE INTO sys_permission_info (permission_code, permission_name, permission_type, parent_id, permission_str, sort_order, visible, is_deleted, version)
+VALUES
+  ('owner:add', '新增业主', 3, @co_id, 'owner:add', 1, 0, 0, 0),
+  ('owner:edit', '编辑业主', 3, @co_id, 'owner:edit', 2, 0, 0, 0),
+  ('owner:delete', '删除业主', 3, @co_id, 'owner:delete', 3, 0, 0, 0);
+
+-- 7) 报修管理按钮权限
+INSERT IGNORE INTO sys_permission_info (permission_code, permission_name, permission_type, parent_id, permission_str, sort_order, visible, is_deleted, version)
+VALUES
+  ('repair:assign', '派单处理', 3, @pr_id, 'repair:assign', 1, 0, 0, 0);
+
+-- 8) 投诉建议按钮权限
+INSERT IGNORE INTO sys_permission_info (permission_code, permission_name, permission_type, parent_id, permission_str, sort_order, visible, is_deleted, version)
+VALUES
+  ('complaint:reply', '回复投诉', 3, @pc_id, 'complaint:reply', 1, 0, 0, 0),
+  ('complaint:close', '关闭投诉', 3, @pc_id, 'complaint:close', 2, 0, 0, 0);
+
+-- 9) 费用项目按钮权限
+INSERT IGNORE INTO sys_permission_info (permission_code, permission_name, permission_type, parent_id, permission_str, sort_order, visible, is_deleted, version)
+VALUES
+  ('finance:fee:add', '新增费用项', 3, @ff_id, 'finance:fee:add', 1, 0, 0, 0),
+  ('finance:fee:edit', '编辑费用项', 3, @ff_id, 'finance:fee:edit', 2, 0, 0, 0),
+  ('finance:fee:delete', '删除费用项', 3, @ff_id, 'finance:fee:delete', 3, 0, 0, 0);
+
+-- 10) 账单管理按钮权限
+INSERT IGNORE INTO sys_permission_info (permission_code, permission_name, permission_type, parent_id, permission_str, sort_order, visible, is_deleted, version)
+VALUES
+  ('finance:bill:generate', '生成账单', 3, @fb_id, 'finance:bill:generate', 1, 0, 0, 0),
+  ('finance:bill:pay', '确认缴费', 3, @fb_id, 'finance:bill:pay', 2, 0, 0, 0);
+
 -- 为 ROLE_SUPER_ADMIN 分配全部权限（系统管理+业务）
 INSERT IGNORE INTO sys_role_permission (role_info_id, permission_info_id, is_deleted, version)
 SELECT 1, p.id, 0, 0
@@ -44,12 +130,19 @@ INSERT IGNORE INTO sys_role_permission (role_info_id, permission_info_id, is_del
 SELECT 2, p.id, 0, 0
 FROM sys_permission_info p
 WHERE p.is_deleted = 0
-  AND p.permission_code IN (
+  AND (p.permission_code IN (
     'dashboard',
     'community', 'community:community', 'community:building', 'community:house', 'community:owner',
+    'community:add', 'community:edit', 'community:delete',
+    'building:add', 'building:edit', 'building:delete',
+    'house:add', 'house:edit', 'house:delete',
+    'owner:add', 'owner:edit', 'owner:delete',
     'property', 'property:repair', 'property:complaint',
-    'finance', 'finance:fee', 'finance:bill', 'finance:payment'
-  );
+    'repair:assign', 'complaint:reply', 'complaint:close',
+    'finance', 'finance:fee', 'finance:bill', 'finance:payment',
+    'finance:fee:add', 'finance:fee:edit', 'finance:fee:delete',
+    'finance:bill:generate', 'finance:bill:pay'
+  ));
 
 -- 物业管理员测试账号（复用 admin 的密码哈希）
 INSERT INTO sys_user_info (user_name, password, full_name, phone_number, status, is_deleted, version)

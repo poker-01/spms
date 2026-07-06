@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { deleteUser, pageUsers, resetUserPassword, saveUser, toggleUserStatus, updateUser } from '@/api/user'
-import type { PageResult, UserItem, UserSave, UserStatus, UserUpdate } from '@/utils/api-types'
+import { listRoles } from '@/api/role'
+import { listUnlinkedOwners } from '@/api/owner-manage'
+import type { PageResult, OwnerItem, RoleItem, UserItem, UserSave, UserStatus, UserUpdate } from '@/utils/api-types'
 import { formatDate } from '@/utils/format'
 
 defineOptions({
   name: 'UserManage',
 })
+
+const OWNER_ROLE_ID = 3
 
 const loading = ref(false)
 const query = reactive({
@@ -28,6 +32,13 @@ const form = reactive<UserSave | UserUpdate>({
   status: 1,
 } as UserSave)
 
+const roles = ref<RoleItem[]>([])
+const selectedRoleIds = ref<number[]>([])
+const unlinkedOwners = ref<OwnerItem[]>([])
+const selectedOwnerId = ref<number | null>(null)
+
+const isOwnerRoleSelected = computed(() => selectedRoleIds.value.includes(OWNER_ROLE_ID))
+
 const loadData = async () => {
   loading.value = true
   try {
@@ -36,6 +47,16 @@ const loadData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const loadRoles = async () => {
+  const { data } = await listRoles()
+  roles.value = data
+}
+
+const loadUnlinkedOwners = async () => {
+  const { data } = await listUnlinkedOwners()
+  unlinkedOwners.value = data
 }
 
 const handleSearch = () => {
@@ -52,6 +73,8 @@ const handleReset = () => {
 
 const openAdd = () => {
   isEdit.value = false
+  selectedRoleIds.value = []
+  selectedOwnerId.value = null
   Object.assign(form, {
     userName: '',
     password: '',
@@ -59,8 +82,11 @@ const openAdd = () => {
     phoneNumber: '',
     email: '',
     status: 1,
-  })
+    roleIds: undefined,
+    ownerId: undefined,
+  } as UserSave)
   dialogVisible.value = true
+  loadUnlinkedOwners()
 }
 
 const openEdit = (row: UserItem) => {
@@ -75,11 +101,42 @@ const openEdit = (row: UserItem) => {
   dialogVisible.value = true
 }
 
+const handleRoleToggle = (roleId: number) => {
+  const idx = selectedRoleIds.value.indexOf(roleId)
+  if (idx >= 0) {
+    selectedRoleIds.value.splice(idx, 1)
+    if (roleId === OWNER_ROLE_ID) {
+      selectedOwnerId.value = null
+      ;(form as UserSave).ownerId = undefined
+    }
+  } else {
+    selectedRoleIds.value.push(roleId)
+  }
+}
+
+const handleOwnerSelect = (ownerId: number) => {
+  selectedOwnerId.value = ownerId
+  const owner = unlinkedOwners.value.find((o) => o.id === ownerId)
+  if (owner) {
+    ;(form as UserSave).fullName = owner.ownerName
+    ;(form as UserSave).phoneNumber = owner.ownerPhone
+    ;(form as UserSave).email = owner.email || ''
+    ;(form as UserSave).ownerId = ownerId
+  }
+}
+
 const handleSubmit = async () => {
   if (isEdit.value) {
     await updateUser(form as UserUpdate)
   } else {
-    await saveUser(form as UserSave)
+    const saveData = { ...(form as UserSave) }
+    if (selectedRoleIds.value.length > 0) {
+      saveData.roleIds = [...selectedRoleIds.value]
+    }
+    if (isOwnerRoleSelected.value && selectedOwnerId.value) {
+      saveData.ownerId = selectedOwnerId.value
+    }
+    await saveUser(saveData)
   }
   dialogVisible.value = false
   loadData()
@@ -104,7 +161,10 @@ const handleDelete = async (row: UserItem) => {
   }
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadData()
+  loadRoles()
+})
 </script>
 
 <template>
@@ -201,6 +261,32 @@ onMounted(loadData)
       <div class="dialog">
         <h3 class="dialog__title">{{ isEdit ? '编辑用户' : '新增用户' }}</h3>
         <div class="dialog__body">
+          <div v-if="!isEdit" class="form-field">
+            <label class="form-label">角色</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0">
+              <label v-for="role in roles" :key="role.id" style="display: flex; align-items: center; gap: 4px; cursor: pointer">
+                <input
+                  type="checkbox"
+                  :value="role.id"
+                  :checked="selectedRoleIds.includes(role.id)"
+                  @change="handleRoleToggle(role.id)"
+                />
+                {{ role.roleName }}
+              </label>
+            </div>
+          </div>
+          <div v-if="!isEdit && isOwnerRoleSelected" class="form-field">
+            <label class="form-label">选择业主 <span style="color: red">*</span></label>
+            <select class="form-input" :value="selectedOwnerId ?? ''" @change="handleOwnerSelect(Number(($event.target as HTMLSelectElement).value))">
+              <option value="" disabled :selected="!selectedOwnerId">请选择业主</option>
+              <option v-for="owner in unlinkedOwners" :key="owner.id" :value="owner.id">
+                {{ owner.ownerName }}（{{ owner.ownerPhone }}）
+              </option>
+            </select>
+            <p v-if="unlinkedOwners.length === 0" style="color: #999; font-size: 12px; margin-top: 4px">
+              暂无未关联用户的业主
+            </p>
+          </div>
           <div class="form-field">
             <label class="form-label">用户名</label>
             <input v-model="(form as UserSave).userName" class="form-input" :disabled="isEdit" />
@@ -211,15 +297,15 @@ onMounted(loadData)
           </div>
           <div class="form-field">
             <label class="form-label">真实姓名</label>
-            <input v-model="form.fullName" class="form-input" />
+            <input v-model="form.fullName" class="form-input" :readonly="!isEdit && isOwnerRoleSelected && selectedOwnerId !== null" />
           </div>
           <div class="form-field">
             <label class="form-label">手机号</label>
-            <input v-model="form.phoneNumber" class="form-input" />
+            <input v-model="form.phoneNumber" class="form-input" :readonly="!isEdit && isOwnerRoleSelected && selectedOwnerId !== null" />
           </div>
           <div class="form-field">
             <label class="form-label">邮箱</label>
-            <input v-model="form.email" class="form-input" />
+            <input v-model="form.email" class="form-input" :readonly="!isEdit && isOwnerRoleSelected && selectedOwnerId !== null" />
           </div>
           <div class="form-field">
             <label class="form-label">状态</label>

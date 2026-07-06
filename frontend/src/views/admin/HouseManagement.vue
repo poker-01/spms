@@ -1,66 +1,18 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  pageHouses,
+  saveHouse,
+  updateHouse,
+  deleteHouse,
+  getHouse,
+} from '@/api/house'
+import { listCommunities } from '@/api/community'
+import { listBuildingsByCommunity } from '@/api/building'
+import type { HouseSave, HouseUpdate } from '@/utils/api-types'
 
 // ============ API 接口 ============
-const houseApi = {
-  // 获取房屋列表（分页）
-  getList: (params: any) => {
-    // return request.get('/api/v1/houses/page', { params })
-    return Promise.resolve({ data: { list: [], total: 0 } })
-  },
-  // 查询全部房屋（下拉列表用）
-  getListAll: () => {
-    // return request.get('/api/v1/houses/list')
-    return Promise.resolve({ data: [] })
-  },
-  // 根据楼栋查房屋
-  getByBuilding: (buildingId: number) => {
-    // return request.get(`/api/v1/houses/by-building/${buildingId}`)
-    return Promise.resolve({ data: [] })
-  },
-  // 根据业主查房屋
-  getByOwner: (ownerId: number) => {
-    // return request.get(`/api/v1/houses/by-owner/${ownerId}`)
-    return Promise.resolve({ data: [] })
-  },
-  // 新增房屋
-  create: (data: any) => {
-    // return request.post('/api/v1/houses', data)
-    return Promise.resolve({ data: {} })
-  },
-  // 更新房屋
-  update: (data: any) => {
-    // return request.put('/api/v1/houses', data)
-    return Promise.resolve({ data: {} })
-  },
-  // 删除房屋
-  delete: (id: number) => {
-    // return request.delete(`/api/v1/houses/${id}`)
-    return Promise.resolve({ data: {} })
-  },
-  // 房屋详情
-  getDetail: (id: number) => {
-    // return request.get(`/api/v1/houses/${id}`)
-    return Promise.resolve({ data: {} })
-  }
-}
-
-const communityApi = {
-  // 获取小区下拉列表
-  getList: () => {
-    // return request.get('/api/v1/communities/list')
-    return Promise.resolve({ data: [] })
-  }
-}
-
-const buildingApi = {
-  // 查询某小区所有楼栋（下拉列表用）
-  getByCommunity: (communityId: number) => {
-    // return request.get(`/api/v1/buildings/by-community/${communityId}`)
-    return Promise.resolve({ data: [] })
-  }
-}
 // =========================================
 
 const loading = ref(false)
@@ -108,7 +60,7 @@ const statusMap = [
 
 const loadCommunityOptions = async () => {
   try {
-    const res = await communityApi.getList()
+    const res = await listCommunities()
     communityOptions.value = res.data || []
     if (communityOptions.value.length > 0) {
       communityId.value = communityOptions.value[0].id
@@ -122,7 +74,7 @@ const loadCommunityOptions = async () => {
 const loadBuildingOptions = async () => {
   if (!communityId.value) return
   try {
-    const res = await buildingApi.getByCommunity(communityId.value)
+    const res = await listBuildingsByCommunity(communityId.value)
     buildingOptions.value = res.data || []
     if (buildingOptions.value.length > 0) {
       buildingId.value = buildingOptions.value[0].id
@@ -137,14 +89,14 @@ const loadData = async () => {
   loading.value = true
   try {
     const params = {
-      page: pagination.current,
+      pageNum: pagination.current,
       pageSize: pagination.pageSize,
       buildingId: buildingId.value,
       houseNumber: searchForm.houseNumber,
       status: searchForm.status
     }
-    const res = await houseApi.getList(params)
-    tableData.value = res.data.list || []
+    const res = await pageHouses(params)
+    tableData.value = res.data.records || []
     pagination.total = res.data.total || 0
   } catch (error) {
     ElMessage.error('加载数据失败')
@@ -196,7 +148,7 @@ const handleEdit = async (row: any) => {
   isEdit.value = true
   dialogTitle.value = '编辑房屋'
   try {
-    const res = await houseApi.getDetail(row.id)
+    const res = await getHouse(row.id)
     Object.assign(form, res.data)
     dialogVisible.value = true
   } catch (error) {
@@ -211,7 +163,7 @@ const handleDelete = (row: any) => {
     type: 'warning'
   }).then(async () => {
     try {
-      await houseApi.delete(row.id)
+      await deleteHouse(row.id)
       ElMessage.success('删除成功')
       loadData()
     } catch (error) {
@@ -223,13 +175,14 @@ const handleDelete = (row: any) => {
 const handleSubmit = async () => {
   try {
     if (isEdit.value) {
-      await houseApi.update(form)
+      await updateHouse(form as HouseUpdate)
       ElMessage.success('更新成功')
     } else {
-      await houseApi.create(form)
+      await saveHouse(form as HouseSave)
       ElMessage.success('新增成功')
     }
-    dialogVisible.value = false    loadData()
+    dialogVisible.value = false
+    loadData()
   } catch (error) {
     ElMessage.error(isEdit.value ? '更新失败' : '新增失败')
   }

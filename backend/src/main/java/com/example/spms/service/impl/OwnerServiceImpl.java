@@ -1,27 +1,43 @@
 package com.example.spms.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.example.spms.common.Page;
+import com.example.spms.enums.ResultCode;
+import com.example.spms.exception.CustomException;
+import com.example.spms.mapper.BillInfoMapper;
+import com.example.spms.mapper.ComplaintSuggestionMapper;
+import com.example.spms.mapper.OwnerHouseRelMapper;
+import com.example.spms.mapper.OwnerInfoMapper;
+import com.example.spms.mapper.RepairOrderMapper;
+import com.example.spms.mapper.SysUserInfoMapper;
 import com.example.spms.model.bo.ComplaintApplyRequest;
+import com.example.spms.model.bo.OwnerQueryRequest;
+import com.example.spms.model.bo.OwnerSaveRequest;
+import com.example.spms.model.bo.OwnerUpdateRequest;
 import com.example.spms.model.bo.RepairApplyRequest;
 import com.example.spms.model.po.BillInfo;
 import com.example.spms.model.po.ComplaintSuggestion;
+import com.example.spms.model.po.OwnerHouseRel;
+import com.example.spms.model.po.OwnerInfo;
 import com.example.spms.model.po.RepairOrder;
 import com.example.spms.model.po.SysUserInfo;
 import com.example.spms.model.vo.OwnerBillVO;
 import com.example.spms.model.vo.OwnerComplaintVO;
 import com.example.spms.model.vo.OwnerHomeVO;
+import com.example.spms.model.vo.OwnerHouseRelVO;
 import com.example.spms.model.vo.OwnerRepairVO;
-import com.example.spms.mapper.BillInfoMapper;
-import com.example.spms.mapper.ComplaintSuggestionMapper;
-import com.example.spms.mapper.RepairOrderMapper;
-import com.example.spms.mapper.SysUserInfoMapper;
+import com.example.spms.model.vo.OwnerVO;
 import com.example.spms.service.OwnerService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 业主端服务实现
@@ -34,6 +50,8 @@ public class OwnerServiceImpl implements OwnerService {
     private final RepairOrderMapper repairOrderMapper;
     private final ComplaintSuggestionMapper complaintSuggestionMapper;
     private final SysUserInfoMapper sysUserInfoMapper;
+    private final OwnerInfoMapper ownerInfoMapper;
+    private final OwnerHouseRelMapper ownerHouseRelMapper;
 
     private static final SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
@@ -119,13 +137,12 @@ public class OwnerServiceImpl implements OwnerService {
 
     @Override
     public void applyRepair(Long userId, RepairApplyRequest request) {
-<<<<<<< HEAD
         RepairOrder order = new RepairOrder();
         order.setOrderNo("RPR" + System.currentTimeMillis());
         order.setOwnerId(userId);
+        order.setRepairType(request.getRepairType());
         order.setRepairDesc(request.getContent());
         order.setRepairPhone(request.getContactPhone());
-        order.setRepairType(0);
         order.setPriority(0);
         order.setStatus(0);
         order.setIsDeleted(0);
@@ -135,42 +152,6 @@ public class OwnerServiceImpl implements OwnerService {
         order.setCreateUser(userId);
         order.setUpdateUser(userId);
         repairOrderMapper.insert(order);
-=======
-        OwnerInfo owner = getOwnerByUserId(userId);
-        if (owner == null) {
-            throw new CustomException(ResultCode.NOT_FOUND, "业主信息不存在");
-        }
-
-        // 获取业主的主要房屋
-        OwnerHouseRel rel = ownerHouseRelMapper.selectOne(
-                new LambdaQueryWrapper<OwnerHouseRel>()
-                        .eq(OwnerHouseRel::getOwnerInfoId, owner.getId())
-                        .eq(OwnerHouseRel::getIsPrimary, 1)
-                        .eq(OwnerHouseRel::getIsDeleted, 0)
-                        .last("LIMIT 1")
-        );
-
-        if (rel == null) {
-            throw new CustomException(ResultCode.FAIL, "该业主未关联房屋");
-        }
-
-        String orderNo = "REP" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-
-        RepairOrder repair = new RepairOrder();
-        repair.setOrderNo(orderNo);
-        repair.setHouseId(rel.getHouseInfoId());
-        repair.setOwnerId(owner.getId());
-        repair.setRepairType(request.getRepairType());
-        repair.setRepairDesc(request.getContent());
-        repair.setRepairPhone(StringUtils.isNotBlank(request.getContactPhone())
-                ? request.getContactPhone() : owner.getOwnerPhone());
-        repair.setStatus(1); // 待派单
-        repair.setPriority(2); // 中优先级
-        repair.setIsDeleted(0);
-        repair.setVersion(0);
-
-        repairOrderMapper.insert(repair);
->>>>>>> origin/dev
     }
 
     @Override
@@ -213,5 +194,150 @@ public class OwnerServiceImpl implements OwnerService {
         entity.setCreateUser(userId);
         entity.setUpdateUser(userId);
         complaintSuggestionMapper.insert(entity);
+    }
+
+    // ==================== 业主管理（后台） ====================
+
+    @Override
+    public Page<OwnerVO> pageQuery(OwnerQueryRequest request) {
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<OwnerInfo> mpPage =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(request.getPageNum(), request.getPageSize());
+
+        LambdaQueryWrapper<OwnerInfo> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(OwnerInfo::getIsDeleted, 0);
+        wrapper.like(StringUtils.isNotBlank(request.getOwnerName()),
+                OwnerInfo::getOwnerName, request.getOwnerName());
+        wrapper.like(StringUtils.isNotBlank(request.getOwnerPhone()),
+                OwnerInfo::getOwnerPhone, request.getOwnerPhone());
+        wrapper.eq(request.getStatus() != null,
+                OwnerInfo::getStatus, request.getStatus());
+        wrapper.orderByDesc(OwnerInfo::getCreateTime);
+
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<OwnerInfo> result =
+                ownerInfoMapper.selectPage(mpPage, wrapper);
+
+        List<OwnerVO> records = result.getRecords().stream()
+                .map(this::toOwnerVO)
+                .collect(Collectors.toList());
+
+        Page<OwnerVO> customPage = new Page<>();
+        customPage.setTotal(result.getTotal());
+        customPage.setPages(result.getPages());
+        customPage.setCurrent(result.getCurrent());
+        customPage.setSize(result.getSize());
+        customPage.setRecords(records);
+        return customPage;
+    }
+
+    @Override
+    public OwnerVO getOwnerByHouseId(Long houseId) {
+        OwnerInfo owner = ownerInfoMapper.selectByHouseId(houseId);
+        return owner == null ? null : toOwnerVO(owner);
+    }
+
+    @Override
+    public List<OwnerHouseRelVO> listOwnerHouses(Long ownerId) {
+        List<OwnerHouseRel> list = ownerHouseRelMapper.selectOwnerHouseDetail(ownerId, null);
+        return list.stream().map(rel -> {
+            OwnerHouseRelVO vo = new OwnerHouseRelVO();
+            vo.setId(rel.getId());
+            vo.setOwnerInfoId(rel.getOwnerInfoId());
+            vo.setHouseInfoId(rel.getHouseInfoId());
+            vo.setRelationType(rel.getRelationType());
+            vo.setIsPrimary(rel.getIsPrimary());
+            StringBuilder fullName = new StringBuilder();
+            if (rel.getCommunityName() != null) fullName.append(rel.getCommunityName());
+            if (rel.getBuildingName() != null) fullName.append(rel.getBuildingName());
+            if (rel.getHouseNumber() != null) fullName.append(rel.getHouseNumber());
+            vo.setHouseFullName(fullName.toString());
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<OwnerVO> listAll() {
+        LambdaQueryWrapper<OwnerInfo> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(OwnerInfo::getIsDeleted, 0)
+                .orderByAsc(OwnerInfo::getOwnerName);
+        return ownerInfoMapper.selectList(wrapper).stream()
+                .map(this::toOwnerVO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<OwnerVO> listUnlinkedOwners() {
+        return ownerInfoMapper.selectUnlinkedOwners().stream()
+                .map(this::toOwnerVO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public OwnerVO getOwnerDetail(Long id) {
+        OwnerInfo entity = ownerInfoMapper.selectDetailById(id);
+        if (entity == null || entity.getIsDeleted() == 1) {
+            throw new CustomException(ResultCode.NOT_FOUND);
+        }
+        return toOwnerVO(entity);
+    }
+
+    @Override
+    @Transactional
+    public void saveOwner(OwnerSaveRequest request) {
+        LambdaQueryWrapper<OwnerInfo> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(OwnerInfo::getOwnerPhone, request.getOwnerPhone())
+                .eq(OwnerInfo::getIsDeleted, 0);
+        if (ownerInfoMapper.selectCount(wrapper) > 0) {
+            throw new CustomException(ResultCode.FAIL, "业主电话已存在");
+        }
+
+        OwnerInfo entity = new OwnerInfo();
+        BeanUtils.copyProperties(request, entity);
+        entity.setIsDeleted(0);
+        entity.setVersion(0);
+        entity.setCreateTime(new Date());
+        entity.setUpdateTime(new Date());
+        ownerInfoMapper.insert(entity);
+
+        if (request.getHouseId() != null) {
+            OwnerHouseRel rel = new OwnerHouseRel();
+            rel.setOwnerInfoId(entity.getId());
+            rel.setHouseInfoId(request.getHouseId());
+            rel.setRelationType(1);
+            rel.setIsPrimary(1);
+            rel.setIsDeleted(0);
+            rel.setVersion(0);
+            rel.setCreateTime(new Date());
+            rel.setUpdateTime(new Date());
+            ownerHouseRelMapper.insert(rel);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void updateOwner(OwnerUpdateRequest request) {
+        OwnerInfo exist = ownerInfoMapper.selectById(request.getId());
+        if (exist == null || exist.getIsDeleted() == 1) {
+            throw new CustomException(ResultCode.NOT_FOUND);
+        }
+
+        BeanUtils.copyProperties(request, exist, "id");
+        exist.setUpdateTime(new Date());
+        ownerInfoMapper.updateById(exist);
+    }
+
+    @Override
+    @Transactional
+    public void removeById(Long id) {
+        OwnerInfo exist = ownerInfoMapper.selectById(id);
+        if (exist == null || exist.getIsDeleted() == 1) {
+            throw new CustomException(ResultCode.NOT_FOUND);
+        }
+        ownerInfoMapper.deleteById(id);
+    }
+
+    private OwnerVO toOwnerVO(OwnerInfo entity) {
+        OwnerVO vo = new OwnerVO();
+        BeanUtils.copyProperties(entity, vo);
+        return vo;
     }
 }

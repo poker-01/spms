@@ -27,6 +27,9 @@ public class UserSaveRequest {
     @NotNull(message = "状态不能为空")
     private Integer status;
 
+    /** 关联业主ID（非维修人员角色必填） */
+    private Long ownerId;
+
     /** 角色ID列表（创建时直接分配角色） */
     private List<Long> roleIds;
 }

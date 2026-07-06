@@ -24,6 +24,8 @@ public class MenuVO {
 
     private String icon;
 
+    private String permissionCode;
+
     private Integer sortOrder;
 
     private List<MenuVO> children;

@@ -53,6 +53,13 @@ public class OwnerManageController {
         return Result.success(ownerService.listAll());
     }
 
+    @Operation(summary = "查询未关联用户的业主（新增用户选择用）")
+    @GetMapping("/unlinked")
+    @PreAuthorize("hasAuthority('system:user:add')")
+    public Result<List<OwnerVO>> listUnlinked() {
+        return Result.success(ownerService.listUnlinkedOwners());
+    }
+
     @Operation(summary = "查询业主详情")
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('owner:query')")

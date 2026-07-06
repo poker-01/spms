@@ -33,6 +33,8 @@ public class SysPermissionInfoServiceImpl extends ServiceImpl<SysPermissionInfoM
     implements SysPermissionInfoService {
 
     private static final int PERMISSION_TYPE_MENU = 1;
+    private static final int PERMISSION_TYPE_PAGE = 2;
+    // 菜单树中包含目录(1)和菜单页面(2)，排除按钮(3)
 
     private final SysUserInfoMapper sysUserInfoMapper;
 
@@ -137,7 +139,8 @@ public class SysPermissionInfoServiceImpl extends ServiceImpl<SysPermissionInfoM
 
     private List<MenuVO> buildMenuTree(List<SysPermissionInfo> menus, Long parentId) {
         Map<Long, List<SysPermissionInfo>> grouped = menus.stream()
-                .filter(p -> Objects.equals(p.getPermissionType(), PERMISSION_TYPE_MENU))
+                .filter(p -> Objects.equals(p.getPermissionType(), PERMISSION_TYPE_MENU)
+                        || Objects.equals(p.getPermissionType(), PERMISSION_TYPE_PAGE))
                 .filter(p -> p.getVisible() == null || p.getVisible() == 1)
                 .collect(Collectors.groupingBy(p -> p.getParentId() == null ? 0L : p.getParentId()));
         return buildMenuChildren(grouped, parentId);
@@ -154,6 +157,7 @@ public class SysPermissionInfoServiceImpl extends ServiceImpl<SysPermissionInfoM
                         .path(p.getPermissionPath())
                         .component(p.getPermissionComponent())
                         .icon(p.getPermissionIcon())
+                        .permissionCode(p.getPermissionCode())
                         .sortOrder(p.getSortOrder())
                         .children(buildMenuChildren(grouped, p.getId()))
                         .build())

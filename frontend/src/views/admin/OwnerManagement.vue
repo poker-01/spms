@@ -1,45 +1,19 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  pageOwners,
+  saveOwner,
+  updateOwner,
+  deleteOwner,
+  getOwner,
+} from '@/api/owner-manage'
+import { listCommunities } from '@/api/community'
+import { listBuildingsByCommunity } from '@/api/building'
+import { listHousesByBuilding } from '@/api/house'
+import type { OwnerSave, OwnerUpdate, CommunityItem, BuildingItem, HouseItem } from '@/utils/api-types'
 
 // ============ API 接口 ============
-const ownerApi = {
-  // 获取业主列表（分页）
-  getList: (params: any) => {
-    // return request.get('/api/v1/owners/page', { params })
-    return Promise.resolve({ data: { list: [], total: 0 } })
-  },
-  // 根据房屋查询业主
-  getByHouse: (houseId: number) => {
-    // return request.get(`/api/v1/owners/by-house/${houseId}`)
-    return Promise.resolve({ data: {} })
-  },
-  // 查询业主关联房屋列表（含完整地址）
-  getOwnerHouses: (ownerId: number) => {
-    // return request.get(`/api/v1/owners/${ownerId}/houses`)
-    return Promise.resolve({ data: [] })
-  },
-  // 新增业主
-  create: (data: any) => {
-    // return request.post('/api/v1/owners', data)
-    return Promise.resolve({ data: {} })
-  },
-  // 更新业主
-  update: (id: number, data: any) => {
-    // return request.put(`/api/v1/owners/${id}`, data)
-    return Promise.resolve({ data: {} })
-  },
-  // 删除业主
-  delete: (id: number) => {
-    // return request.delete(`/api/v1/owners/${id}`)
-    return Promise.resolve({ data: {} })
-  },
-  // 业主详情
-  getDetail: (id: number) => {
-    // return request.get(`/api/v1/owners/${id}`)
-    return Promise.resolve({ data: {} })
-  }
-}
 // =========================================
 
 const loading = ref(false)
@@ -72,16 +46,60 @@ const form = reactive({
   remark: ''
 })
 
+const communities = ref<CommunityItem[]>([])
+const buildings = ref<BuildingItem[]>([])
+const houses = ref<HouseItem[]>([])
+const selectedCommunityId = ref<number | null>(null)
+const selectedBuildingId = ref<number | null>(null)
+const selectedHouseId = ref<number | null>(null)
+
+const loadCommunities = async () => {
+  const { data } = await listCommunities()
+  communities.value = data
+}
+
+const loadBuildings = async (communityId: number) => {
+  buildings.value = []
+  houses.value = []
+  selectedBuildingId.value = null
+  selectedHouseId.value = null
+  if (!communityId) return
+  const { data } = await listBuildingsByCommunity(communityId)
+  buildings.value = data
+}
+
+const loadHouses = async (buildingId: number) => {
+  houses.value = []
+  selectedHouseId.value = null
+  if (!buildingId) return
+  const { data } = await listHousesByBuilding(buildingId)
+  houses.value = data
+}
+
+const handleCommunityChange = (val: number) => {
+  selectedCommunityId.value = val
+  loadBuildings(val)
+}
+
+const handleBuildingChange = (val: number) => {
+  selectedBuildingId.value = val
+  loadHouses(val)
+}
+
+const handleHouseChange = (val: number) => {
+  selectedHouseId.value = val
+}
+
 const loadData = async () => {
   loading.value = true
   try {
     const params = {
-      page: pagination.current,
+      pageNum: pagination.current,
       pageSize: pagination.pageSize,
       ...searchForm
     }
-    const res = await ownerApi.getList(params)
-    tableData.value = res.data.list || []
+    const res = await pageOwners(params)
+    tableData.value = res.data.records || []
     pagination.total = res.data.total || 0
   } catch (error) {
     ElMessage.error('加载数据失败')
@@ -116,14 +134,20 @@ const handleAdd = () => {
   isEdit.value = false
   dialogTitle.value = '新增业主'
   resetForm()
+  selectedCommunityId.value = null
+  selectedBuildingId.value = null
+  selectedHouseId.value = null
+  buildings.value = []
+  houses.value = []
   dialogVisible.value = true
+  loadCommunities()
 }
 
 const handleEdit = async (row: any) => {
   isEdit.value = true
   dialogTitle.value = '编辑业主'
   try {
-    const res = await ownerApi.getDetail(row.id)
+    const res = await getOwner(row.id)
     Object.assign(form, res.data)
     dialogVisible.value = true
   } catch (error) {
@@ -138,7 +162,7 @@ const handleDelete = (row: any) => {
     type: 'warning'
   }).then(async () => {
     try {
-      await ownerApi.delete(row.id)
+      await deleteOwner(row.id)
       ElMessage.success('删除成功')
       loadData()
     } catch (error) {
@@ -150,10 +174,23 @@ const handleDelete = (row: any) => {
 const handleSubmit = async () => {
   try {
     if (isEdit.value) {
-      await ownerApi.update(form.id!, form)
+      await updateOwner(form as OwnerUpdate)
       ElMessage.success('更新成功')
     } else {
-      await ownerApi.create(form)
+      if (!selectedHouseId.value) {
+        ElMessage.warning('请选择关联房屋')
+        return
+      }
+      const saveData: OwnerSave = {
+        ownerName: form.ownerName,
+        ownerPhone: form.ownerPhone,
+        idCard: form.idCard,
+        gender: form.gender,
+        email: form.email,
+        status: form.status,
+        houseId: selectedHouseId.value,
+      }
+      await saveOwner(saveData)
       ElMessage.success('新增成功')
     }
     dialogVisible.value = false
@@ -297,6 +334,31 @@ onMounted(() => {
         </div>
         <div class="dialog__body">
           <div class="form-grid">
+            <!-- 新增时：级联选择房屋 -->
+            <template v-if="!isEdit">
+              <div class="form-field">
+                <label class="form-label required">小区</label>
+                <select class="form-input" :value="selectedCommunityId ?? ''" @change="handleCommunityChange(Number(($event.target as HTMLSelectElement).value))">
+                  <option value="" disabled>请选择小区</option>
+                  <option v-for="c in communities" :key="c.id" :value="c.id">{{ c.communityName }}</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label required">楼栋</label>
+                <select class="form-input" :value="selectedBuildingId ?? ''" :disabled="!selectedCommunityId" @change="handleBuildingChange(Number(($event.target as HTMLSelectElement).value))">
+                  <option value="" disabled>请选择楼栋</option>
+                  <option v-for="b in buildings" :key="b.id" :value="b.id">{{ b.buildingName }}</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label required">房屋</label>
+                <select class="form-input" :value="selectedHouseId ?? ''" :disabled="!selectedBuildingId" @change="handleHouseChange(Number(($event.target as HTMLSelectElement).value))">
+                  <option value="" disabled>请选择房屋</option>
+                  <option v-for="h in houses" :key="h.id" :value="h.id">{{ h.houseNumber }}</option>
+                </select>
+              </div>
+            </template>
+
             <div class="form-field">
               <label class="form-label required">业主姓名</label>
               <input v-model="form.ownerName" class="form-input" placeholder="请输入业主姓名" />

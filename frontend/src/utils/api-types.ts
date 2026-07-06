@@ -41,6 +41,7 @@ export interface MenuItem {
   path: string
   component?: string
   icon?: string
+  permissionCode?: string
   sortOrder: number
   children?: MenuItem[]
 }
@@ -72,6 +73,8 @@ export interface UserSave {
   phoneNumber?: string
   email?: string
   status: number
+  roleIds?: number[]
+  ownerId?: number
 }
 
 export interface UserUpdate {
@@ -215,4 +218,215 @@ export interface ComplaintApplyData {
   title: string
   content: string
   contactPhone?: string
+}
+
+// ========== 小区 ==========
+export interface CommunityItem {
+  id: number
+  communityCode: string
+  communityName: string
+  address?: string
+  province?: string
+  city?: string
+  district?: string
+  totalBuildings?: number
+  totalUnits?: number
+  propertyCompany?: string
+  managerName?: string
+  managerPhone?: string
+  status: number
+  createTime?: string
+  updateTime?: string
+}
+
+export interface CommunityQuery {
+  [key: string]: string | number | boolean | undefined | null
+  communityName?: string
+  city?: string
+  status?: number
+  pageNum?: number
+  pageSize?: number
+}
+
+export interface CommunitySave {
+  communityCode: string
+  communityName: string
+  address?: string
+  province?: string
+  city?: string
+  district?: string
+  totalBuildings?: number
+  totalUnits?: number
+  propertyCompany?: string
+  managerName?: string
+  managerPhone?: string
+  status: number
+  remark?: string
+}
+
+export interface CommunityUpdate {
+  id: number
+  communityCode?: string
+  communityName?: string
+  address?: string
+  province?: string
+  city?: string
+  district?: string
+  totalBuildings?: number
+  totalUnits?: number
+  propertyCompany?: string
+  managerName?: string
+  managerPhone?: string
+  status?: number
+  remark?: string
+}
+
+// ========== 楼栋 ==========
+export interface BuildingItem {
+  id: number
+  communityId: number
+  communityName?: string
+  buildingCode: string
+  buildingName: string
+  totalFloors?: number
+  totalUnits?: number
+  status: number
+  createTime?: string
+  updateTime?: string
+}
+
+export interface BuildingQuery {
+  [key: string]: string | number | boolean | undefined | null
+  buildingName?: string
+  communityId?: number
+  status?: number
+  pageNum?: number
+  pageSize?: number
+}
+
+export interface BuildingSave {
+  communityId: number
+  buildingCode: string
+  buildingName: string
+  totalFloors?: number
+  totalUnits?: number
+  status: number
+  remark?: string
+}
+
+export interface BuildingUpdate {
+  id: number
+  communityId?: number
+  buildingCode?: string
+  buildingName?: string
+  totalFloors?: number
+  totalUnits?: number
+  status?: number
+  remark?: string
+}
+
+// ========== 房屋 ==========
+export interface HouseItem {
+  id: number
+  buildingId: number
+  buildingName?: string
+  communityName?: string
+  houseNumber: string
+  floorNumber?: number
+  houseArea?: number
+  houseType?: string
+  ownerName?: string
+  ownerPhone?: string
+  status: number
+  createTime?: string
+  updateTime?: string
+}
+
+export interface HouseQuery {
+  [key: string]: string | number | boolean | undefined | null
+  houseNumber?: string
+  buildingId?: number
+  status?: number
+  pageNum?: number
+  pageSize?: number
+}
+
+export interface HouseSave {
+  buildingId: number
+  houseNumber: string
+  floorNumber?: number
+  houseArea?: number
+  houseType?: string
+  ownerName?: string
+  ownerPhone?: string
+  status: number
+  remark?: string
+}
+
+export interface HouseUpdate {
+  id: number
+  buildingId?: number
+  houseNumber?: string
+  floorNumber?: number
+  houseArea?: number
+  houseType?: string
+  ownerName?: string
+  ownerPhone?: string
+  status?: number
+  remark?: string
+}
+
+// ========== 业主 ==========
+export interface OwnerItem {
+  id: number
+  ownerName: string
+  ownerPhone: string
+  idCard?: string
+  gender?: number
+  email?: string
+  status: number
+  createTime?: string
+  updateTime?: string
+}
+
+export interface OwnerHouseRel {
+  id?: number
+  ownerId?: number
+  houseId?: number
+  houseNumber?: string
+  buildingName?: string
+  communityName?: string
+  fullAddress?: string
+}
+
+export interface OwnerQuery {
+  [key: string]: string | number | boolean | undefined | null
+  ownerName?: string
+  ownerPhone?: string
+  idCard?: string
+  status?: number
+  pageNum?: number
+  pageSize?: number
+}
+
+export interface OwnerSave {
+  ownerName: string
+  ownerPhone: string
+  idCard?: string
+  gender?: number
+  email?: string
+  status: number
+  remark?: string
+  houseId?: number
+}
+
+export interface OwnerUpdate {
+  id: number
+  ownerName?: string
+  ownerPhone?: string
+  idCard?: string
+  gender?: number
+  email?: string
+  status?: number
+  remark?: string
 }

@@ -56,6 +56,16 @@ public interface OwnerInfoMapper extends BaseMapper<OwnerInfo> {
     List<OwnerInfo> selectActiveList();
 
     /**
+     * 查询尚未关联用户账号的业主（手机号不在 sys_user_info 中）
+     */
+    @Select("SELECT o.* FROM owner_info o " +
+            "WHERE o.is_deleted = 0 AND o.status = 1 " +
+            "AND o.owner_phone NOT IN (" +
+            "  SELECT u.phone_number FROM sys_user_info u WHERE u.is_deleted = 0 AND u.phone_number IS NOT NULL" +
+            ") ORDER BY o.owner_name")
+    List<OwnerInfo> selectUnlinkedOwners();
+
+    /**
      * 分页查询业主（带条件）- 使用XML
      */
     List<OwnerInfo> selectPageByCondition(@Param("ownerName") String ownerName,

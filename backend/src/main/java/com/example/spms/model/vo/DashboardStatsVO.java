@@ -17,30 +17,51 @@ import java.util.Map;
 @Builder
 public class DashboardStatsVO {
 
-    // 报修统计
+    // ========== 系统统计 ==========
+    private Long totalUsers;
+    private Long totalRoles;
+
+    // ========== 小区/楼栋/房屋统计 ==========
+    private Long totalCommunities;
+    private Long totalBuildings;
+    private Long totalHouses;
+    private Long occupiedHouses;
+
+    // ========== 业主统计 ==========
+    private Long totalOwners;
+
+    // ========== 报修统计 ==========
     private Long totalRepairs;
-
     private Long pendingRepairs;
-
     private Long processingRepairs;
-
     private Long completedRepairs;
 
-    // 投诉统计
+    // ========== 投诉统计 ==========
     private Long totalComplaints;
-
     private Long pendingComplaints;
 
-    // 近7日报修趋势
+    // ========== 财务统计 ==========
+    private Long totalBills;
+    private Long unpaidBills;
+    private Long paidBills;
+    private Long overdueBills;
+    private BigDecimal totalPaymentAmount;
+    private BigDecimal totalOverdueAmount;
+
+    // ========== 分布/趋势 ==========
+    /** 近7日报修趋势 */
     private List<DailyRepairStat> dailyRepairStats;
 
-    // 报修类型分布
+    /** 报修类型分布 */
     private Map<String, Long> repairTypeDistribution;
 
-    // 投诉类型分布
+    /** 投诉类型分布 */
     private Map<String, Long> complaintTypeDistribution;
 
-    // 平均处理时长（小时）
+    /** 账单状态分布 */
+    private Map<String, Long> billStatusDistribution;
+
+    /** 平均处理时长（小时） */
     private BigDecimal avgProcessHours;
 
     @Data

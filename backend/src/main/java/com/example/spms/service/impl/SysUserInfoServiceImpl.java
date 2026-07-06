@@ -16,10 +16,12 @@ import com.example.spms.model.bo.UserUpdateRequest;
 import com.example.spms.model.po.SysRoleInfo;
 import com.example.spms.model.po.SysUserInfo;
 import com.example.spms.model.po.SysUserRole;
+import com.example.spms.model.po.OwnerInfo;
 import com.example.spms.model.vo.UserDetailVO;
 import com.example.spms.model.vo.UserPageVO;
 import com.example.spms.service.SysUserInfoService;
 import com.example.spms.mapper.SysUserInfoMapper;
+import com.example.spms.mapper.OwnerInfoMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -44,9 +46,11 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
     implements SysUserInfoService {
 
     private static final String DEFAULT_PASSWORD = "123456";
+    private static final Long REPAIR_ROLE_ID = 4L;
 
     private final SysUserRoleMapper sysUserRoleMapper;
     private final SysRoleInfoMapper sysRoleInfoMapper;
+    private final OwnerInfoMapper ownerInfoMapper;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -149,6 +153,20 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
         if (exist != null) {
             throw new CustomException(ResultCode.USERNAME_EXISTS);
         }
+
+        boolean isRepairRole = !CollectionUtils.isEmpty(request.getRoleIds())
+                && request.getRoleIds().contains(REPAIR_ROLE_ID);
+
+        if (!isRepairRole) {
+            if (request.getOwnerId() == null) {
+                throw new CustomException(ResultCode.BAD_REQUEST.getCode(), "非维修人员角色必须关联业主");
+            }
+            OwnerInfo owner = ownerInfoMapper.selectById(request.getOwnerId());
+            if (owner == null || owner.getIsDeleted() == 1) {
+                throw new CustomException(ResultCode.OWNER_NOT_FOUND);
+            }
+        }
+
         SysUserInfo user = new SysUserInfo();
         user.setUserName(request.getUserName());
         user.setPassword(passwordEncoder.encode(request.getPassword()));

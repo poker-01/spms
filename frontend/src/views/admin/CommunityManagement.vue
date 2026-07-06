@@ -1,40 +1,16 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  pageCommunities,
+  saveCommunity,
+  updateCommunity,
+  deleteCommunity,
+  getCommunity,
+} from '@/api/community'
+import type { CommunitySave, CommunityUpdate } from '@/utils/api-types'
 
 // ============ API 接口 ============
-const communityApi = {
-  // 获取小区列表（分页）
-  getList: (params: any) => {
-    // return request.get('/api/v1/communities/page', { params })
-    return Promise.resolve({ data: { list: [], total: 0 } })
-  },
-  // 获取小区下拉列表
-  getOptions: () => {
-    // return request.get('/api/v1/communities/list')
-    return Promise.resolve({ data: [] })
-  },
-  // 新增小区
-  create: (data: any) => {
-    // return request.post('/api/v1/communities', data)
-    return Promise.resolve({ data: {} })
-  },
-  // 更新小区
-  update: (id: number, data: any) => {
-    // return request.put(`/api/v1/communities/${id}`, data)
-    return Promise.resolve({ data: {} })
-  },
-  // 删除小区
-  delete: (id: number) => {
-    // return request.delete(`/api/v1/communities/${id}`)
-    return Promise.resolve({ data: {} })
-  },
-  // 小区详情
-  getDetail: (id: number) => {
-    // return request.get(`/api/v1/communities/${id}`)
-    return Promise.resolve({ data: {} })
-  }
-}
 // =========================================
 
 const loading = ref(false)
@@ -78,12 +54,12 @@ const loadData = async () => {
   loading.value = true
   try {
     const params = {
-      page: pagination.current,
+      pageNum: pagination.current,
       pageSize: pagination.pageSize,
       ...searchForm
     }
-    const res = await communityApi.getList(params)
-    tableData.value = res.data.list || []
+    const res = await pageCommunities(params)
+    tableData.value = res.data.records || []
     pagination.total = res.data.total || 0
   } catch (error) {
     ElMessage.error('加载数据失败')
@@ -126,7 +102,7 @@ const handleEdit = async (row: any) => {
   isEdit.value = true
   dialogTitle.value = '编辑小区'
   try {
-    const res = await communityApi.getDetail(row.id)
+    const res = await getCommunity(row.id)
     Object.assign(form, res.data)
     dialogVisible.value = true
   } catch (error) {
@@ -141,7 +117,7 @@ const handleDelete = (row: any) => {
     type: 'warning'
   }).then(async () => {
     try {
-      await communityApi.delete(row.id)
+      await deleteCommunity(row.id)
       ElMessage.success('删除成功')
       loadData()
     } catch (error) {
@@ -153,10 +129,10 @@ const handleDelete = (row: any) => {
 const handleSubmit = async () => {
   try {
     if (isEdit.value) {
-      await communityApi.update(form.id!, form)
+      await updateCommunity(form as CommunityUpdate)
       ElMessage.success('更新成功')
     } else {
-      await communityApi.create(form)
+      await saveCommunity(form as CommunitySave)
       ElMessage.success('新增成功')
     }
     dialogVisible.value = false
