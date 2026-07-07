@@ -52,6 +52,9 @@
         <if test="endTime != null and endTime != ''">
             AND b.create_time &lt;= #{endTime}
         </if>
+        <if test="communityId != null">
+            AND bd.community_id = #{communityId}
+        </if>
         ORDER BY b.create_time DESC
     </select>
 

@@ -32,7 +32,8 @@ public interface BillInfoMapper extends BaseMapper<BillInfo> {
                                                @Param("status") Integer status,
                                                @Param("billPeriod") String billPeriod,
                                                @Param("startTime") String startTime,
-                                               @Param("endTime") String endTime);
+                                               @Param("endTime") String endTime,
+                                               @Param("communityId") Long communityId);
 
     /**
      * 查询账单详情
@@ -52,13 +53,25 @@ public interface BillInfoMapper extends BaseMapper<BillInfo> {
     /**
      * 统计各状态账单数量
      */
-    @Select("SELECT status, COUNT(*) as count FROM bill_info WHERE is_deleted = 0 GROUP BY status")
-    java.util.List<Map<String, Object>> countByStatus();
+    @Select("<script>" +
+            "SELECT b.status, COUNT(*) as count FROM bill_info b " +
+            "LEFT JOIN house_info h ON b.house_id = h.id AND h.is_deleted = 0 " +
+            "LEFT JOIN building_info bd ON h.building_id = bd.id AND bd.is_deleted = 0 " +
+            "WHERE b.is_deleted = 0 " +
+            "<if test='communityId != null'> AND bd.community_id = #{communityId} </if>" +
+            "GROUP BY b.status" +
+            "</script>")
+    java.util.List<Map<String, Object>> countByStatus(@Param("communityId") Long communityId);
 
     /**
-     * 统计总欠费金额
+     * 统计总欠费金额（含待缴费、部分缴费、已逾期的未结清账单）
      */
-    @Select("SELECT SUM(bill_amount - paid_amount) as total FROM bill_info " +
-            "WHERE is_deleted = 0 AND status IN (0, 1)")
-    BigDecimal sumOverdueAmount();
+    @Select("<script>" +
+            "SELECT SUM(b.bill_amount - b.paid_amount) as total FROM bill_info b " +
+            "LEFT JOIN house_info h ON b.house_id = h.id AND h.is_deleted = 0 " +
+            "LEFT JOIN building_info bd ON h.building_id = bd.id AND bd.is_deleted = 0 " +
+            "WHERE b.is_deleted = 0 AND b.status IN (0, 1, 3) " +
+            "<if test='communityId != null'> AND bd.community_id = #{communityId} </if>" +
+            "</script>")
+    BigDecimal sumOverdueAmount(@Param("communityId") Long communityId);
 }

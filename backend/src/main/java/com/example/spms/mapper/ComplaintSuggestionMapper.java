@@ -29,6 +29,7 @@ public interface ComplaintSuggestionMapper extends BaseMapper<ComplaintSuggestio
                                                     @Param("status") Integer status,
                                                     @Param("type") String type,
                                                     @Param("ownerId") Long ownerId,
+                                                    @Param("communityId") Long communityId,
                                                     @Param("startTime") String startTime,
                                                     @Param("endTime") String endTime);
 

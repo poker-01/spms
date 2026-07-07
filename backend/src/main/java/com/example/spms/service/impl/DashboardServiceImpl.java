@@ -23,6 +23,23 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DashboardServiceImpl implements DashboardService {
 
+    /** 投诉类型映射（与 OwnerServiceImpl.COMPLAINT_TYPE_MAP 保持一致） */
+    private static final Map<Integer, String> COMPLAINT_TYPE_MAP = Map.of(
+            1, "物业服务",
+            2, "设施维修",
+            3, "噪音扰民",
+            4, "其他"
+    );
+
+    private int parseIntSafe(String value) {
+        if (value == null) return 0;
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
     private final CommunityService communityService;
     private final BuildingService buildingService;
     private final HouseService houseService;
@@ -64,8 +81,8 @@ public class DashboardServiceImpl implements DashboardService {
                 .paidBills(countBillsByStatus(2))
                 .overdueBills(countBillsByStatus(3))
                 .totalPaymentAmount(safeDecimal(paymentRecordService.sumTotalPayAmount()))
-                .totalOverdueAmount(safeDecimal(billInfoService.sumOverdueAmount()))
-                .billStatusDistribution(toMap(billInfoService.countByStatus()))
+                .totalOverdueAmount(safeDecimal(billInfoService.sumOverdueAmount(null)))
+                .billStatusDistribution(toMap(billInfoService.countByStatus(null)))
                 .repairTypeDistribution(null)
                 .complaintTypeDistribution(toMap(complaintSuggestionService.countByType()))
                 .build();
@@ -275,10 +292,10 @@ public class DashboardServiceImpl implements DashboardService {
 
     private BigDecimal sumOverdueAmountByHouseIds(List<Long> houseIds) {
         try {
-            // 逾期账单（status=3）按房屋ID过滤
+            // 欠费账单：待缴费(0)、部分缴费(1)、已逾期(3) 中未结清的金额
             List<BillInfo> overdueBills = billInfoService.list(new LambdaQueryWrapper<BillInfo>()
                     .in(BillInfo::getHouseId, houseIds)
-                    .eq(BillInfo::getStatus, 3)
+                    .in(BillInfo::getStatus, 0, 1, 3)
                     .eq(BillInfo::getIsDeleted, 0));
             return overdueBills.stream()
                     .map(b -> {
@@ -302,8 +319,8 @@ public class DashboardServiceImpl implements DashboardService {
                             b -> b.getStatus() != null ? b.getStatus() : -1,
                             Collectors.counting()));
             Map<String, Long> result = new java.util.LinkedHashMap<>();
-            // 按状态码映射名称
-            Map<Integer, String> statusNameMap = Map.of(0, "待缴费", 1, "已逾期", 2, "已缴费", 3, "已逾期");
+            // 按状态码映射名称（0-待缴费 1-部分缴费 2-已缴费 3-已逾期）
+            Map<Integer, String> statusNameMap = Map.of(0, "待缴费", 1, "部分缴费", 2, "已缴费", 3, "已逾期");
             for (Map.Entry<Integer, Long> entry : statusCountMap.entrySet()) {
                 String name = statusNameMap.getOrDefault(entry.getKey(), "状态" + entry.getKey());
                 result.merge(name, entry.getValue(), Long::sum);
@@ -321,8 +338,9 @@ public class DashboardServiceImpl implements DashboardService {
                     .eq(ComplaintSuggestion::getIsDeleted, 0));
             Map<String, Long> result = new java.util.LinkedHashMap<>();
             for (ComplaintSuggestion c : complaints) {
-                String type = c.getType() != null ? c.getType() : "未知";
-                result.merge(type, 1L, Long::sum);
+                int typeCode = parseIntSafe(c.getType());
+                String typeName = COMPLAINT_TYPE_MAP.getOrDefault(typeCode, "其他");
+                result.merge(typeName, 1L, Long::sum);
             }
             return result;
         } catch (Exception e) {

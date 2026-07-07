@@ -189,7 +189,6 @@
                   :value="method.value"
                   class="pay-method__input"
                 />
-                <span class="pay-method__icon">{{ method.icon }}</span>
                 <span class="pay-method__label">{{ method.label }}</span>
               </label>
             </div>
@@ -316,10 +315,10 @@ const detail = ref<BillDetail | null>(null)
 
 // 支付方式（与后端 PayMethod 枚举 code 对应：0-现金 1-银行转账 2-微信支付 3-支付宝）
 const payMethods = [
-  { value: 0, label: '现金', icon: '💰' },
-  { value: 1, label: '银行转账', icon: '🏦' },
-  { value: 2, label: '微信支付', icon: '💚' },
-  { value: 3, label: '支付宝', icon: '💙' },
+  { value: 0, label: '现金' },
+  { value: 1, label: '银行转账' },
+  { value: 2, label: '微信支付' },
+  { value: 3, label: '支付宝' },
 ]
 
 const payMethodLabels: Record<number, string> = {

@@ -22,6 +22,10 @@ public class CommunitySaveRequest {
     private Integer totalBuildings;
     private Integer totalUnits;
     private String propertyCompany;
+
+    /** 负责人用户ID（物业管理员） */
+    private Long managerId;
+
     private String managerName;
     private String managerPhone;
     private Integer status;

@@ -19,6 +19,8 @@ public class ComplaintQueryRequest {
 
     private Long ownerId;
 
+    private Long communityId;
+
     private String startTime;
 
     private String endTime;

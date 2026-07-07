@@ -47,6 +47,7 @@ public class ComplaintSuggestionServiceImpl extends ServiceImpl<ComplaintSuggest
                 request.getStatus(),
                 request.getType(),
                 request.getOwnerId(),
+                request.getCommunityId(),
                 request.getStartTime(),
                 request.getEndTime()
         );

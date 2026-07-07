@@ -36,7 +36,7 @@ public class BillAutoGenerateTask {
         log.info("【定时任务】开始自动生成 {} 月度账单...", billPeriod);
 
         try {
-            int count = billInfoService.autoGenerateMonthlyBills(billPeriod);
+            int count = billInfoService.autoGenerateMonthlyBills(billPeriod, null);
             log.info("【定时任务】{} 月度账单生成完成，共生成 {} 条账单", billPeriod, count);
         } catch (Exception e) {
             log.error("【定时任务】{} 月度账单生成失败: {}", billPeriod, e.getMessage(), e);
