@@ -1,6 +1,8 @@
 package com.example.spms.security;
 
+import com.example.spms.mapper.CommunityInfoMapper;
 import com.example.spms.mapper.SysUserInfoMapper;
+import com.example.spms.model.po.CommunityInfo;
 import com.example.spms.model.po.SysUserInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,6 +17,7 @@ import java.util.List;
 public class UserDetailsServiceImpl implements UserDetailsService {
 
     private final SysUserInfoMapper sysUserInfoMapper;
+    private final CommunityInfoMapper communityInfoMapper;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -22,9 +25,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         if (user == null) {
             throw new UsernameNotFoundException("用户不存在: " + username);
         }
-        List<String> roleCodes = sysUserInfoMapper.selectRoleCodesByUserId(user.getId());
-        List<String> permissionStrs = sysUserInfoMapper.selectPermissionStrsByUserId(user.getId());
-        return new LoginUser(user, roleCodes, permissionStrs);
+        return buildLoginUser(user);
     }
 
     public LoginUser loadUserById(Long userId) {
@@ -32,8 +33,23 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         if (user == null) {
             throw new UsernameNotFoundException("用户不存在: " + userId);
         }
-        List<String> roleCodes = sysUserInfoMapper.selectRoleCodesByUserId(userId);
-        List<String> permissionStrs = sysUserInfoMapper.selectPermissionStrsByUserId(userId);
-        return new LoginUser(user, roleCodes, permissionStrs);
+        return buildLoginUser(user);
+    }
+
+    private LoginUser buildLoginUser(SysUserInfo user) {
+        List<String> roleCodes = sysUserInfoMapper.selectRoleCodesByUserId(user.getId());
+        List<String> permissionStrs = sysUserInfoMapper.selectPermissionStrsByUserId(user.getId());
+
+        Long communityId = null;
+        String communityName = null;
+        if (user.getCommunityId() != null) {
+            CommunityInfo community = communityInfoMapper.selectById(user.getCommunityId());
+            if (community != null && community.getIsDeleted() == 0) {
+                communityId = community.getId();
+                communityName = community.getCommunityName();
+            }
+        }
+
+        return new LoginUser(user, roleCodes, permissionStrs, communityId, communityName);
     }
 }

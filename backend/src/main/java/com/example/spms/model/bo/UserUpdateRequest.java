@@ -19,4 +19,7 @@ public class UserUpdateRequest {
     private String email;
 
     private Integer status;
+
+    /** 所属小区ID（管理员绑定小区，超级管理员不需要） */
+    private Long communityId;
 }

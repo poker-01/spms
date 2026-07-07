@@ -1,4 +1,4 @@
-package com.example.spms.service.impl;
+ package com.example.spms.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.spms.common.Page;
 import com.example.spms.enums.ResultCode;
 import com.example.spms.exception.CustomException;
+import com.example.spms.mapper.CommunityInfoMapper;
 import com.example.spms.mapper.SysRoleInfoMapper;
 import com.example.spms.mapper.SysUserRoleMapper;
 import com.example.spms.model.bo.UserAssignRoleRequest;
@@ -13,6 +14,7 @@ import com.example.spms.model.bo.UserQueryRequest;
 import com.example.spms.model.bo.UserSaveRequest;
 import com.example.spms.model.bo.UserStatusRequest;
 import com.example.spms.model.bo.UserUpdateRequest;
+import com.example.spms.model.po.CommunityInfo;
 import com.example.spms.model.po.SysRoleInfo;
 import com.example.spms.model.po.SysUserInfo;
 import com.example.spms.model.po.SysUserRole;
@@ -51,6 +53,7 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
     private final SysUserRoleMapper sysUserRoleMapper;
     private final SysRoleInfoMapper sysRoleInfoMapper;
     private final OwnerInfoMapper ownerInfoMapper;
+    private final CommunityInfoMapper communityInfoMapper;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -77,6 +80,19 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
         List<Long> userIds = records.stream().map(SysUserInfo::getId).toList();
         Map<Long, List<String>> roleNameMap = queryRoleNamesByUserIds(userIds);
 
+        // 收集所有非空 communityId，批量查询小区信息
+        Set<Long> communityIds = records.stream()
+                .map(SysUserInfo::getCommunityId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        Map<Long, String> communityNameMap = Collections.emptyMap();
+        if (!communityIds.isEmpty()) {
+            communityNameMap = communityInfoMapper.selectBatchIds(communityIds).stream()
+                    .filter(c -> c.getIsDeleted() == 0)
+                    .collect(Collectors.toMap(CommunityInfo::getId, CommunityInfo::getCommunityName));
+        }
+
+        Map<Long, String> finalCommunityNameMap = communityNameMap;
         List<UserPageVO> list = records.stream().map(user -> UserPageVO.builder()
                 .id(user.getId())
                 .userName(user.getUserName())
@@ -86,6 +102,8 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
                 .status(user.getStatus())
                 .createTime(user.getCreateTime())
                 .roleNames(roleNameMap.getOrDefault(user.getId(), Collections.emptyList()))
+                .communityId(user.getCommunityId())
+                .communityName(finalCommunityNameMap.get(user.getCommunityId()))
                 .build()).toList();
 
         Page<UserPageVO> result = new Page<>();
@@ -174,6 +192,7 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
         user.setPhoneNumber(request.getPhoneNumber());
         user.setEmail(request.getEmail());
         user.setStatus(request.getStatus());
+        user.setCommunityId(request.getCommunityId());
         baseMapper.insert(user);
 
         // 如果指定了角色，直接分配角色
@@ -199,6 +218,9 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
         user.setEmail(request.getEmail());
         if (request.getStatus() != null) {
             user.setStatus(request.getStatus());
+        }
+        if (request.getCommunityId() != null) {
+            user.setCommunityId(request.getCommunityId());
         }
         baseMapper.updateById(user);
     }
@@ -260,6 +282,18 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
         }
         List<SysUserInfo> users = baseMapper.selectBatchIds(userIds);
         Map<Long, List<String>> roleNameMap = queryRoleNamesByUserIds(userIds);
+        // 收集所有非空 communityId，批量查询小区信息
+        Set<Long> communityIds = users.stream()
+                .map(SysUserInfo::getCommunityId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        Map<Long, String> communityNameMap = Collections.emptyMap();
+        if (!communityIds.isEmpty()) {
+            communityNameMap = communityInfoMapper.selectBatchIds(communityIds).stream()
+                    .filter(c -> c.getIsDeleted() == 0)
+                    .collect(Collectors.toMap(CommunityInfo::getId, CommunityInfo::getCommunityName));
+        }
+        Map<Long, String> finalCommunityNameMap = communityNameMap;
         return users.stream()
                 .filter(u -> u.getIsDeleted() == 0)
                 .map(user -> UserPageVO.builder()
@@ -271,6 +305,34 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
                         .status(user.getStatus())
                         .createTime(user.getCreateTime())
                         .roleNames(roleNameMap.getOrDefault(user.getId(), Collections.emptyList()))
+                        .communityId(user.getCommunityId())
+                        .communityName(finalCommunityNameMap.get(user.getCommunityId()))
+                        .build()).toList();
+    }
+
+    @Override
+    public List<UserPageVO> listByRoleIdAndCommunityId(Long roleId, Long communityId) {
+        List<Long> userIds = getUserIdsByRoleId(roleId);
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<SysUserInfo> users = baseMapper.selectBatchIds(userIds);
+        Map<Long, List<String>> roleNameMap = queryRoleNamesByUserIds(userIds);
+        // 按小区ID过滤，如果communityId为null则不过滤（超级管理员场景）
+        return users.stream()
+                .filter(u -> u.getIsDeleted() == 0)
+                .filter(u -> communityId == null || communityId.equals(u.getCommunityId()))
+                .map(user -> UserPageVO.builder()
+                        .id(user.getId())
+                        .userName(user.getUserName())
+                        .fullName(user.getFullName())
+                        .phoneNumber(user.getPhoneNumber())
+                        .email(user.getEmail())
+                        .status(user.getStatus())
+                        .createTime(user.getCreateTime())
+                        .roleNames(roleNameMap.getOrDefault(user.getId(), Collections.emptyList()))
+                        .communityId(user.getCommunityId())
+                        .communityName(null)
                         .build()).toList();
     }
 
@@ -291,6 +353,14 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
             roleNames = sysRoleInfoMapper.selectBatchIds(rIds).stream()
                     .map(SysRoleInfo::getRoleName).toList();
         }
+        // 查询小区信息
+        String communityName = null;
+        if (user.getCommunityId() != null) {
+            CommunityInfo community = communityInfoMapper.selectById(user.getCommunityId());
+            if (community != null && community.getIsDeleted() == 0) {
+                communityName = community.getCommunityName();
+            }
+        }
         return UserDetailVO.builder()
                 .id(user.getId())
                 .userName(user.getUserName())
@@ -303,6 +373,8 @@ public class SysUserInfoServiceImpl extends ServiceImpl<SysUserInfoMapper, SysUs
                 .updateTime(user.getUpdateTime())
                 .roleIds(roleIds)
                 .roleNames(roleNames)
+                .communityId(user.getCommunityId())
+                .communityName(communityName)
                 .build();
     }
 }

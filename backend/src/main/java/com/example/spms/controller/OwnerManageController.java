@@ -1,5 +1,6 @@
 package com.example.spms.controller;
 
+import com.example.spms.common.CommunityFilterHelper;
 import com.example.spms.common.Page;
 import com.example.spms.common.Result;
 import com.example.spms.model.bo.OwnerQueryRequest;
@@ -7,12 +8,14 @@ import com.example.spms.model.bo.OwnerSaveRequest;
 import com.example.spms.model.bo.OwnerUpdateRequest;
 import com.example.spms.model.vo.OwnerHouseRelVO;
 import com.example.spms.model.vo.OwnerVO;
+import com.example.spms.security.LoginUser;
 import com.example.spms.service.OwnerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,8 +31,10 @@ public class OwnerManageController {
     @Operation(summary = "分页查询业主")
     @GetMapping("/page")
     @PreAuthorize("hasAuthority('owner:query')")
-    public Result<Page<OwnerVO>> page(OwnerQueryRequest request) {
-        return Result.success(ownerService.pageQuery(request));
+    public Result<Page<OwnerVO>> page(OwnerQueryRequest request,
+                                      @AuthenticationPrincipal LoginUser loginUser) {
+        Long communityId = CommunityFilterHelper.getCommunityId(loginUser);
+        return Result.success(ownerService.pageQuery(request, communityId));
     }
 
     @Operation(summary = "根据房屋ID查询业主（关联查询）")
@@ -49,8 +54,9 @@ public class OwnerManageController {
     @Operation(summary = "查询全部业主（下拉列表用）")
     @GetMapping("/list")
     @PreAuthorize("hasAuthority('owner:query')")
-    public Result<List<OwnerVO>> list() {
-        return Result.success(ownerService.listAll());
+    public Result<List<OwnerVO>> list(@AuthenticationPrincipal LoginUser loginUser) {
+        Long communityId = CommunityFilterHelper.getCommunityId(loginUser);
+        return Result.success(ownerService.listAll(communityId));
     }
 
     @Operation(summary = "查询未关联用户的业主（新增用户选择用）")

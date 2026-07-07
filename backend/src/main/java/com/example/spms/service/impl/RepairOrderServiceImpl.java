@@ -45,7 +45,7 @@ public class RepairOrderServiceImpl extends ServiceImpl<RepairOrderMapper, Repai
     private final SysUserInfoService sysUserInfoService;
 
     @Override
-    public com.example.spms.common.Page<RepairOrderVO> pageRepairs(RepairQueryRequest request) {
+    public com.example.spms.common.Page<RepairOrderVO> pageRepairs(RepairQueryRequest request, Long communityId) {
         Page<Map<String, Object>> page = new Page<>(request.getPage(), request.getSize());
         IPage<Map<String, Object>> result = repairOrderMapper.selectRepairOrderPage(
                 page,
@@ -56,7 +56,8 @@ public class RepairOrderServiceImpl extends ServiceImpl<RepairOrderMapper, Repai
                 request.getOwnerId(),
                 request.getAssigneeId(),
                 request.getStartTime(),
-                request.getEndTime()
+                request.getEndTime(),
+                communityId
         );
 
         List<RepairOrderVO> records = result.getRecords().stream()
@@ -218,6 +219,8 @@ public class RepairOrderServiceImpl extends ServiceImpl<RepairOrderMapper, Repai
                 .assigneeName(getString(data, "assignee_name"))
                 .repairCost(getBigDecimal(data, "repair_cost"))
                 .evaluateScore(getInteger(data, "evaluate_score"))
+                .assignTime(formatDate(data.get("assign_time")))
+                .repairTime(formatDate(data.get("repair_time")))
                 .createTime(formatDate(data.get("create_time")))
                 .updateTime(formatDate(data.get("update_time")))
                 .build();

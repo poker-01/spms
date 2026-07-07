@@ -68,6 +68,8 @@ public class AuthServiceImpl implements AuthService {
                 .avatarAddress(user.getAvatarAddress())
                 .roles(loginUser.getRoleCodes())
                 .permissions(loginUser.getPermissionStrs())
+                .communityId(loginUser.getCommunityId())
+                .communityName(loginUser.getCommunityName())
                 .build();
     }
 }

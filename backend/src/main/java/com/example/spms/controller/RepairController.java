@@ -1,5 +1,6 @@
 package com.example.spms.controller;
 
+import com.example.spms.common.CommunityFilterHelper;
 import com.example.spms.common.Page;
 import com.example.spms.common.Result;
 import com.example.spms.model.bo.RepairAssignRequest;
@@ -9,7 +10,9 @@ import com.example.spms.model.bo.RepairQueryRequest;
 import com.example.spms.model.vo.RepairDetailVO;
 import com.example.spms.model.vo.RepairOrderVO;
 import com.example.spms.security.LoginUser;
+import com.example.spms.model.vo.UserPageVO;
 import com.example.spms.service.RepairOrderService;
+import com.example.spms.service.SysUserInfoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,6 +27,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 /**
  * 报修工单管理控制器
  *
@@ -37,17 +42,28 @@ import org.springframework.web.bind.annotation.RestController;
 public class RepairController {
 
     private final RepairOrderService repairOrderService;
+    private final SysUserInfoService sysUserInfoService;
+
+    @Operation(summary = "获取维修人员列表（用于派单下拉选择，仅返回当前小区维修人员）")
+    @GetMapping("/repairers")
+    @PreAuthorize("hasAuthority('repair:assign')")
+    public Result<List<UserPageVO>> listRepairers(@AuthenticationPrincipal LoginUser loginUser) {
+        Long communityId = CommunityFilterHelper.getCommunityId(loginUser);
+        return Result.success(sysUserInfoService.listByRoleIdAndCommunityId(4L, communityId));
+    }
 
     @Operation(summary = "分页查询报修工单")
     @GetMapping("/page")
-    @PreAuthorize("hasAuthority('repair:query')")
-    public Result<Page<RepairOrderVO>> page(RepairQueryRequest request) {
-        return Result.success(repairOrderService.pageRepairs(request));
+    @PreAuthorize("hasAnyAuthority('repair:query', 'ROLE_REPAIR')")
+    public Result<Page<RepairOrderVO>> page(RepairQueryRequest request,
+                                             @AuthenticationPrincipal LoginUser loginUser) {
+        Long communityId = CommunityFilterHelper.getCommunityId(loginUser);
+        return Result.success(repairOrderService.pageRepairs(request, communityId));
     }
 
     @Operation(summary = "查询报修工单详情")
     @GetMapping("/{orderId}")
-    @PreAuthorize("hasAuthority('repair:query')")
+    @PreAuthorize("hasAnyAuthority('repair:query', 'ROLE_REPAIR')")
     public Result<RepairDetailVO> detail(@PathVariable Long orderId) {
         return Result.success(repairOrderService.getRepairDetail(orderId));
     }

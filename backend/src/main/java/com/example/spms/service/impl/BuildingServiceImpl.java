@@ -31,11 +31,15 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingInfoMapper, Buildin
     private final CommunityInfoMapper communityInfoMapper;
 
     @Override
-    public Page<BuildingVO> pageQuery(BuildingQueryRequest request) {
+    public Page<BuildingVO> pageQuery(BuildingQueryRequest request, Long communityId) {
         LambdaQueryWrapper<BuildingInfo> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BuildingInfo::getIsDeleted, 0);
-        wrapper.eq(request.getCommunityId() != null,
-                BuildingInfo::getCommunityId, request.getCommunityId());
+        // 优先使用前端传入的 communityId，如果没有则使用当前用户绑定的小区
+        if (request.getCommunityId() != null) {
+            wrapper.eq(BuildingInfo::getCommunityId, request.getCommunityId());
+        } else if (communityId != null) {
+            wrapper.eq(BuildingInfo::getCommunityId, communityId);
+        }
         wrapper.like(StringUtils.isNotBlank(request.getBuildingName()),
                 BuildingInfo::getBuildingName, request.getBuildingName());
         wrapper.eq(request.getStatus() != null,
@@ -146,10 +150,13 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingInfoMapper, Buildin
     }
 
     @Override
-    public List<BuildingVO> listAll() {
+    public List<BuildingVO> listAll(Long communityId) {
         LambdaQueryWrapper<BuildingInfo> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(BuildingInfo::getIsDeleted, 0)
-                .orderByAsc(BuildingInfo::getBuildingCode);
+        wrapper.eq(BuildingInfo::getIsDeleted, 0);
+        if (communityId != null) {
+            wrapper.eq(BuildingInfo::getCommunityId, communityId);
+        }
+        wrapper.orderByAsc(BuildingInfo::getBuildingCode);
         return this.list(wrapper).stream()
                 .map(this::toVO)
                 .collect(Collectors.toList());

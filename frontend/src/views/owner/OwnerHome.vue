@@ -69,23 +69,43 @@ onMounted(async () => {
 
     <section class="owner-home__info">
       <article class="owner-home-card">
+        <h3 class="owner-home-card__title">房屋信息</h3>
+        <dl class="owner-home-card__list">
+          <template v-if="homeData?.houseAddresses?.length">
+            <div
+              v-for="(addr, idx) in homeData.houseAddresses"
+              :key="idx"
+              class="owner-home-card__item"
+            >
+              <dt>房产{{ homeData.houseAddresses.length > 1 ? idx + 1 : '' }}</dt>
+              <dd>{{ addr }}</dd>
+            </div>
+          </template>
+          <div v-else class="owner-home-card__item">
+            <dt>暂无关联房产</dt>
+            <dd>-</dd>
+          </div>
+        </dl>
+      </article>
+
+      <article class="owner-home-card">
         <h3 class="owner-home-card__title">个人信息</h3>
         <dl class="owner-home-card__list">
           <div class="owner-home-card__item">
             <dt>用户名</dt>
-            <dd>{{ userStore.userInfo?.userName || '-' }}</dd>
+            <dd>{{ homeData?.userName || userStore.userInfo?.userName || '-' }}</dd>
           </div>
           <div class="owner-home-card__item">
             <dt>真实姓名</dt>
-            <dd>{{ userStore.userInfo?.fullName || '-' }}</dd>
+            <dd>{{ homeData?.fullName || userStore.userInfo?.fullName || '-' }}</dd>
           </div>
           <div class="owner-home-card__item">
             <dt>手机号</dt>
-            <dd>{{ userStore.userInfo?.phoneNumber || '未填写' }}</dd>
+            <dd>{{ homeData?.phoneNumber || userStore.userInfo?.phoneNumber || '未填写' }}</dd>
           </div>
           <div class="owner-home-card__item">
             <dt>邮箱</dt>
-            <dd>{{ userStore.userInfo?.email || '未填写' }}</dd>
+            <dd>{{ homeData?.email || userStore.userInfo?.email || '未填写' }}</dd>
           </div>
         </dl>
       </article>
@@ -166,7 +186,7 @@ onMounted(async () => {
 
 .owner-home__info {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
 }
 
@@ -212,6 +232,10 @@ onMounted(async () => {
 
 @media (max-width: 768px) {
   .owner-home__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .owner-home__info {
     grid-template-columns: 1fr;
   }
 }

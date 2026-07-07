@@ -17,4 +17,6 @@ public class UserInfoVO {
     private String avatarAddress;
     private List<String> roles;
     private List<String> permissions;
+    private Long communityId;
+    private String communityName;
 }

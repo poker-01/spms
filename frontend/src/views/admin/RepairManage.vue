@@ -245,7 +245,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
-import { getRepairPage, assignRepair, completeRepair, startRepair, getUsersByRole } from '@/api/repair'
+import { getRepairPage, assignRepair, completeRepair, startRepair, getRepairers } from '@/api/repair'
 import type { RepairVO, RepairQuery, RepairerInfo } from '@/api/repair'
 
 defineOptions({
@@ -325,7 +325,7 @@ const getPageSize = (): number => {
  */
 const loadRepairers = async () => {
   try {
-    const { data } = await getUsersByRole(4)
+    const { data } = await getRepairers()
     repairers.value = data
   } catch (error) {
     console.error('加载维修人员失败:', error)

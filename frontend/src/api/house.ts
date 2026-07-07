@@ -24,6 +24,12 @@ export const listHousesByBuilding = (
   return request.get<HouseItem[]>(`/api/v1/houses/by-building/${buildingId}`)
 }
 
+export const listAvailableHousesByBuilding = (
+  buildingId: number,
+): Promise<ApiResult<HouseItem[]>> => {
+  return request.get<HouseItem[]>(`/api/v1/houses/by-building/${buildingId}/available`)
+}
+
 export const listHousesByOwner = (
   ownerId: number,
 ): Promise<ApiResult<HouseItem[]>> => {

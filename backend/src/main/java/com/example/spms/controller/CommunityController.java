@@ -1,17 +1,20 @@
 package com.example.spms.controller;
 
+import com.example.spms.common.CommunityFilterHelper;
 import com.example.spms.common.Page;
 import com.example.spms.common.Result;
 import com.example.spms.model.bo.CommunityQueryRequest;
 import com.example.spms.model.bo.CommunitySaveRequest;
 import com.example.spms.model.bo.CommunityUpdateRequest;
 import com.example.spms.model.vo.CommunityVO;
+import com.example.spms.security.LoginUser;
 import com.example.spms.service.CommunityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,15 +33,18 @@ public class CommunityController {
     @Operation(summary = "分页查询小区")
     @GetMapping("/page")
     @PreAuthorize("hasAuthority('community:query')")
-    public Result<Page<CommunityVO>> page(CommunityQueryRequest request) {
-        return Result.success(communityService.pageQuery(request));
+    public Result<Page<CommunityVO>> page(CommunityQueryRequest request,
+                                          @AuthenticationPrincipal LoginUser loginUser) {
+        Long communityId = CommunityFilterHelper.getCommunityId(loginUser);
+        return Result.success(communityService.pageQuery(request, communityId));
     }
 
     @Operation(summary = "查询全部小区（下拉列表用）")
     @GetMapping("/list")
     @PreAuthorize("hasAuthority('community:query')")
-    public Result<List<CommunityVO>> list() {
-        return Result.success(communityService.listAll());
+    public Result<List<CommunityVO>> list(@AuthenticationPrincipal LoginUser loginUser) {
+        Long communityId = CommunityFilterHelper.getCommunityId(loginUser);
+        return Result.success(communityService.listAll(communityId));
     }
 
     @Operation(summary = "查询小区详情")

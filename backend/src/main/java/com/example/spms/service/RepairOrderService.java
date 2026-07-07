@@ -19,9 +19,9 @@ import com.example.spms.model.vo.RepairOrderVO;
 public interface RepairOrderService extends IService<RepairOrder> {
 
     /**
-     * 分页查询报修工单
+     * 分页查询报修工单（支持按小区过滤）
      */
-    Page<RepairOrderVO> pageRepairs(RepairQueryRequest request);
+    Page<RepairOrderVO> pageRepairs(RepairQueryRequest request, Long communityId);
 
     /**
      * 获取报修工单详情

@@ -1,12 +1,15 @@
 package com.example.spms.controller;
 
+import com.example.spms.common.CommunityFilterHelper;
 import com.example.spms.common.Result;
 import com.example.spms.model.vo.DashboardStatsVO;
+import com.example.spms.security.LoginUser;
 import com.example.spms.service.DashboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,7 +31,8 @@ public class DashboardController {
     @Operation(summary = "获取全局统计数据")
     @GetMapping("/stats")
     @PreAuthorize("hasAuthority('dashboard:view')")
-    public Result<DashboardStatsVO> getStats() {
-        return Result.success(dashboardService.getStats());
+    public Result<DashboardStatsVO> getStats(@AuthenticationPrincipal LoginUser loginUser) {
+        Long communityId = CommunityFilterHelper.getCommunityId(loginUser);
+        return Result.success(dashboardService.getStats(communityId));
     }
 }

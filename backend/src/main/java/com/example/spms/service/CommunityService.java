@@ -12,7 +12,7 @@ import java.util.List;
 
 public interface CommunityService extends IService<CommunityInfo> {
 
-    Page<CommunityVO> pageQuery(CommunityQueryRequest request);
+    Page<CommunityVO> pageQuery(CommunityQueryRequest request, Long communityId);
 
     void saveCommunity(CommunitySaveRequest request);
 
@@ -20,5 +20,5 @@ public interface CommunityService extends IService<CommunityInfo> {
 
     CommunityVO getCommunityDetail(Long id);
 
-    List<CommunityVO> listAll();
+    List<CommunityVO> listAll(Long communityId);
 }

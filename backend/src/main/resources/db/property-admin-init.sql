@@ -45,6 +45,12 @@ WHERE permission_code = 'dashboard' AND is_deleted = 0 AND (permission_path = '/
 UPDATE sys_permission_info SET visible = 0
 WHERE id IN (21, 22, 23) AND is_deleted = 0;
 
+-- 隐藏旧版财务管理子菜单（已被 finance:fee:menu / finance:bill:menu 替代）及缴费记录菜单
+UPDATE sys_permission_info SET visible = 0
+WHERE id IN (51, 52, 53) AND is_deleted = 0;
+UPDATE sys_permission_info SET visible = 0
+WHERE permission_code = 'finance:payment:menu' AND is_deleted = 0;
+
 -- 为已有菜单级权限补上 permission_str（用于 query 检查）
 UPDATE sys_permission_info SET permission_str = 'community:query' WHERE permission_code = 'community:community' AND is_deleted = 0 AND (permission_str IS NULL OR permission_str = '');
 UPDATE sys_permission_info SET permission_str = 'building:query' WHERE permission_code = 'community:building' AND is_deleted = 0 AND (permission_str IS NULL OR permission_str = '');
@@ -127,7 +133,7 @@ INSERT IGNORE INTO sys_permission_info (permission_code, permission_name, permis
 VALUES ('finance:bill:menu', '账单管理', 1, 5, '/admin/bills', NULL, 'finance:bill:query', 7, 1, 0, 0);
 
 INSERT IGNORE INTO sys_permission_info (permission_code, permission_name, permission_type, parent_id, permission_path, permission_component, permission_str, sort_order, visible, is_deleted, version)
-VALUES ('finance:payment:menu', '缴费记录', 1, 5, '/admin/payments', NULL, 'finance:payment:query', 8, 1, 0, 0);
+VALUES ('finance:payment:menu', '缴费记录', 1, 5, '/admin/payments', NULL, 'finance:payment:query', 8, 0, 0, 0);
 
 SET @fee_menu_id = (SELECT id FROM sys_permission_info WHERE permission_code = 'finance:fee:menu' AND is_deleted = 0 LIMIT 1);
 SET @bill_menu_id = (SELECT id FROM sys_permission_info WHERE permission_code = 'finance:bill:menu' AND is_deleted = 0 LIMIT 1);

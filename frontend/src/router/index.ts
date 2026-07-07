@@ -181,6 +181,13 @@ const router = createRouter({
           component: () => import('@/views/admin/BillDetail.vue'),
           meta: { requiresAuth: true, portal: 'property' },
         },
+        // ========== 维修人员专属页面 ==========
+        {
+          path: 'repairer-tasks',
+          name: 'RepairerTasks',
+          component: () => import('@/views/repairer/RepairerTasks.vue'),
+          meta: { requiresAuth: true, portal: 'property' },
+        },
       ],
     },
   ],

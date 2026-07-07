@@ -32,4 +32,7 @@ public class UserSaveRequest {
 
     /** 角色ID列表（创建时直接分配角色） */
     private List<Long> roleIds;
+
+    /** 所属小区ID（管理员绑定小区，超级管理员不需要） */
+    private Long communityId;
 }

@@ -12,11 +12,7 @@ defineOptions({
         <h1 class="auth-layout__title">智慧物业管理系统</h1>
         <p class="auth-layout__subtitle">高效、便捷、安全的物业服务平台</p>
       </div>
-      <ul class="auth-layout__features">
-        <li>在线账单查询与缴费</li>
-        <li>报修工单全流程跟踪</li>
-        <li>社区公告与消息通知</li>
-      </ul>
+
     </div>
 
     <div class="auth-layout__panel auth-layout__panel--form">
@@ -76,25 +72,7 @@ defineOptions({
   font-size: 16px;
 }
 
-.auth-layout__features {
-  margin: 40px 0 0;
-  padding: 0;
-  list-style: none;
-}
 
-.auth-layout__features li {
-  position: relative;
-  padding-left: 24px;
-  margin-bottom: 12px;
-  color: rgba(255, 255, 255, 0.92);
-}
-
-.auth-layout__features li::before {
-  content: '✓';
-  position: absolute;
-  left: 0;
-  font-weight: 700;
-}
 
 .auth-layout__panel--form {
   background: var(--color-bg);

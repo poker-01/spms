@@ -12,7 +12,7 @@ import java.util.List;
 
 public interface BuildingService extends IService<BuildingInfo> {
 
-    Page<BuildingVO> pageQuery(BuildingQueryRequest request);
+    Page<BuildingVO> pageQuery(BuildingQueryRequest request, Long communityId);
 
     void saveBuilding(BuildingSaveRequest request);
 
@@ -22,5 +22,5 @@ public interface BuildingService extends IService<BuildingInfo> {
 
     List<BuildingVO> listByCommunityId(Long communityId);
 
-    List<BuildingVO> listAll();
+    List<BuildingVO> listAll(Long communityId);
 }

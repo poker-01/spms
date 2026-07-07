@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import AuthLayout from '@/components/AuthLayout.vue'
 import { useAuth } from '@/utils/useAuth'
 import type { LoginType } from '@/utils/role'
+import { mapLoginType } from '@/utils/role'
 
 defineOptions({
   name: 'Login',
@@ -56,7 +57,7 @@ const handleSubmit = async () => {
     {
       userName: form.userName,
       password: form.password,
-      loginType: loginType.value,
+      loginType: mapLoginType(loginType.value),
     },
     redirect,
   )
@@ -126,16 +127,7 @@ const handleSubmit = async () => {
         </button>
       </form>
 
-      <!-- 演示账号提示 -->
-      <p v-if="loginType === 'property'" class="login__demo">
-        测试账号：admin，密码：123456
-      </p>
-      <p v-else-if="loginType === 'repair'" class="login__demo">
-        测试账号：repair，密码：123456
-      </p>
-      <p v-else-if="loginType === 'owner'" class="login__demo">
-        测试账号：owner，密码：123456
-      </p>
+
     </div>
   </auth-layout>
 </template>
@@ -195,10 +187,5 @@ const handleSubmit = async () => {
   margin-top: 8px;
 }
 
-.login__demo {
-  margin: 16px 0 0;
-  text-align: center;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
+
 </style>

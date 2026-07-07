@@ -40,6 +40,11 @@ public interface SysUserInfoService extends IService<SysUserInfo> {
     List<UserPageVO> listByRoleId(Long roleId);
 
     /**
+     * 根据角色ID和小区ID查询用户列表（不分页，用于下拉选择，支持小区数据隔离）
+     */
+    List<UserPageVO> listByRoleIdAndCommunityId(Long roleId, Long communityId);
+
+    /**
      * 获取用户详情
      */
     UserDetailVO getUserDetail(Long userId);

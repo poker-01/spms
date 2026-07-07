@@ -1,17 +1,20 @@
 package com.example.spms.controller;
 
+import com.example.spms.common.CommunityFilterHelper;
 import com.example.spms.common.Page;
 import com.example.spms.common.Result;
 import com.example.spms.model.bo.BuildingQueryRequest;
 import com.example.spms.model.bo.BuildingSaveRequest;
 import com.example.spms.model.bo.BuildingUpdateRequest;
 import com.example.spms.model.vo.BuildingVO;
+import com.example.spms.security.LoginUser;
 import com.example.spms.service.BuildingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,8 +33,10 @@ public class BuildingController {
     @Operation(summary = "分页查询楼栋")
     @GetMapping("/page")
     @PreAuthorize("hasAuthority('building:query')")
-    public Result<Page<BuildingVO>> page(BuildingQueryRequest request) {
-        return Result.success(buildingService.pageQuery(request));
+    public Result<Page<BuildingVO>> page(BuildingQueryRequest request,
+                                         @AuthenticationPrincipal LoginUser loginUser) {
+        Long communityId = CommunityFilterHelper.getCommunityId(loginUser);
+        return Result.success(buildingService.pageQuery(request, communityId));
     }
 
     @Operation(summary = "查询某小区所有楼栋（关联查询）")
@@ -44,8 +49,9 @@ public class BuildingController {
     @Operation(summary = "查询全部楼栋（下拉列表用）")
     @GetMapping("/list")
     @PreAuthorize("hasAuthority('building:query')")
-    public Result<List<BuildingVO>> list() {
-        return Result.success(buildingService.listAll());
+    public Result<List<BuildingVO>> list(@AuthenticationPrincipal LoginUser loginUser) {
+        Long communityId = CommunityFilterHelper.getCommunityId(loginUser);
+        return Result.success(buildingService.listAll(communityId));
     }
 
     @Operation(summary = "查询楼栋详情")

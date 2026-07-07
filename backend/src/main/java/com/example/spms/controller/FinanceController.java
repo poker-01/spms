@@ -101,6 +101,17 @@ public class FinanceController {
         return Result.success();
     }
 
+    @Operation(summary = "一键生成月度账单（为所有业主自动生成当月账单）")
+    @PostMapping("/bills/auto-generate")
+    @PreAuthorize("hasAuthority('finance:bill:generate')")
+    public Result<Integer> autoGenerateMonthlyBills(@RequestParam(required = false) String billPeriod) {
+        if (billPeriod == null || billPeriod.isBlank()) {
+            billPeriod = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+        }
+        int count = billInfoService.autoGenerateMonthlyBills(billPeriod);
+        return Result.success(count);
+    }
+
     @Operation(summary = "缴费登记")
     @PostMapping("/bills/pay")
     @PreAuthorize("hasAuthority('finance:bill:pay')")

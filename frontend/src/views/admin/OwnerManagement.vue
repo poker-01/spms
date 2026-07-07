@@ -52,6 +52,7 @@ const houses = ref<HouseItem[]>([])
 const selectedCommunityId = ref<number | null>(null)
 const selectedBuildingId = ref<number | null>(null)
 const selectedHouseId = ref<number | null>(null)
+const hasParking = ref(0)
 
 const loadCommunities = async () => {
   const { data } = await listCommunities()
@@ -137,6 +138,7 @@ const handleAdd = () => {
   selectedCommunityId.value = null
   selectedBuildingId.value = null
   selectedHouseId.value = null
+  hasParking.value = 0
   buildings.value = []
   houses.value = []
   dialogVisible.value = true
@@ -189,6 +191,7 @@ const handleSubmit = async () => {
         email: form.email,
         status: form.status,
         houseId: selectedHouseId.value,
+        hasParking: hasParking.value,
       }
       await saveOwner(saveData)
       ElMessage.success('新增成功')
@@ -354,8 +357,22 @@ onMounted(() => {
                 <label class="form-label required">房屋</label>
                 <select class="form-input" :value="selectedHouseId ?? ''" :disabled="!selectedBuildingId" @change="handleHouseChange(Number(($event.target as HTMLSelectElement).value))">
                   <option value="" disabled>请选择房屋</option>
-                  <option v-for="h in houses" :key="h.id" :value="h.id">{{ h.houseNumber }}</option>
+                  <option v-for="h in houses" :key="h.id" :value="h.id">{{ h.houseNumber }}{{ h.status === 1 ? ' (已入住)' : ' (空置)' }}</option>
                 </select>
+                <span v-if="selectedHouseId && houses.find(h => h.id === selectedHouseId)?.status === 1" class="form-hint" style="color: #f59e0b; font-size: 12px; margin-top: 4px;">
+                  ⚠ 该房屋已有业主，将作为共有人添加（费用仍按房屋计算，不会重复收费）
+                </span>
+              </div>
+              <div class="form-field">
+                <label class="form-label">是否有车位</label>
+                <div class="radio-group">
+                  <label class="radio-label">
+                    <input type="radio" :value="1" v-model="hasParking" /> 有车位
+                  </label>
+                  <label class="radio-label">
+                    <input type="radio" :value="0" v-model="hasParking" /> 无车位
+                  </label>
+                </div>
               </div>
             </template>
 

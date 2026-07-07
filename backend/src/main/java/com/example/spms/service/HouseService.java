@@ -15,7 +15,7 @@ public interface HouseService extends IService<HouseInfo> {
     /**
      * 分页查询房屋
      */
-    Page<HouseVO> pageQuery(HouseQueryRequest request);
+    Page<HouseVO> pageQuery(HouseQueryRequest request, Long communityId);
 
     /**
      * 新增房屋
@@ -43,7 +43,12 @@ public interface HouseService extends IService<HouseInfo> {
     List<HouseVO> listByOwnerId(Long ownerId);
 
     /**
+     * 查询某楼栋下未被占用的房屋（新增业主时选择用）
+     */
+    List<HouseVO> listAvailableByBuildingId(Long buildingId);
+
+    /**
      * 查询全部房屋（下拉列表用）
      */
-    List<HouseVO> listAll();
+    List<HouseVO> listAll(Long communityId);
 }

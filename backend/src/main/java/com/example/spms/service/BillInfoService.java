@@ -58,4 +58,11 @@ public interface BillInfoService extends IService<BillInfo> {
      * 获取业主账单列表（业主端）
      */
     List<com.example.spms.model.vo.OwnerBillVO> listOwnerBills(Long ownerId);
+
+    /**
+     * 自动生成月度账单（为所有业主、所有启用的费用项目生成）
+     * @param billPeriod 账单周期，格式如 "2026-07"
+     * @return 生成的账单数量
+     */
+    int autoGenerateMonthlyBills(String billPeriod);
 }

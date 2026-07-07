@@ -34,7 +34,7 @@ public class HouseServiceImpl extends ServiceImpl<HouseInfoMapper, HouseInfo>
     private final OwnerHouseRelMapper ownerHouseRelMapper;
 
     @Override
-    public Page<HouseVO> pageQuery(HouseQueryRequest request) {
+    public Page<HouseVO> pageQuery(HouseQueryRequest request, Long communityId) {
         LambdaQueryWrapper<HouseInfo> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(HouseInfo::getIsDeleted, 0);
         wrapper.eq(request.getBuildingId() != null,
@@ -43,6 +43,28 @@ public class HouseServiceImpl extends ServiceImpl<HouseInfoMapper, HouseInfo>
                 HouseInfo::getHouseNumber, request.getHouseNumber());
         wrapper.eq(request.getStatus() != null,
                 HouseInfo::getStatus, request.getStatus());
+
+        // 非超级管理员，仅查询自己小区下的房屋（通过楼栋关联）
+        if (communityId != null && request.getBuildingId() == null) {
+            // 先查出该小区下所有楼栋ID
+            LambdaQueryWrapper<BuildingInfo> buildingWrapper = new LambdaQueryWrapper<>();
+            buildingWrapper.eq(BuildingInfo::getCommunityId, communityId)
+                    .eq(BuildingInfo::getIsDeleted, 0);
+            List<Long> buildingIds = buildingInfoMapper.selectList(buildingWrapper).stream()
+                    .map(BuildingInfo::getId)
+                    .collect(Collectors.toList());
+            if (buildingIds.isEmpty()) {
+                Page<HouseVO> emptyPage = new Page<>();
+                emptyPage.setTotal(0L);
+                emptyPage.setPages(0L);
+                emptyPage.setCurrent(request.getPageNum());
+                emptyPage.setSize(request.getPageSize());
+                emptyPage.setRecords(List.of());
+                return emptyPage;
+            }
+            wrapper.in(HouseInfo::getBuildingId, buildingIds);
+        }
+
         wrapper.orderByAsc(HouseInfo::getHouseNumber);
 
         // 使用 MyBatis-Plus 的 Page（使用完全限定名，不导入）
@@ -167,10 +189,54 @@ public class HouseServiceImpl extends ServiceImpl<HouseInfoMapper, HouseInfo>
     }
 
     @Override
-    public List<HouseVO> listAll() {
-        LambdaQueryWrapper<HouseInfo> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(HouseInfo::getIsDeleted, 0)
+    public List<HouseVO> listAvailableByBuildingId(Long buildingId) {
+        // 查询该楼栋下所有未删除的房屋
+        LambdaQueryWrapper<HouseInfo> houseWrapper = new LambdaQueryWrapper<>();
+        houseWrapper.eq(HouseInfo::getBuildingId, buildingId)
+                .eq(HouseInfo::getIsDeleted, 0)
                 .orderByAsc(HouseInfo::getHouseNumber);
+        List<HouseInfo> allHouses = this.list(houseWrapper);
+
+        if (allHouses.isEmpty()) {
+            return List.of();
+        }
+
+        // 查询已被占用的房屋ID（存在有效业主关联的房屋）
+        List<Long> allHouseIds = allHouses.stream().map(HouseInfo::getId).collect(Collectors.toList());
+        LambdaQueryWrapper<OwnerHouseRel> relWrapper = new LambdaQueryWrapper<>();
+        relWrapper.in(OwnerHouseRel::getHouseInfoId, allHouseIds)
+                .eq(OwnerHouseRel::getIsDeleted, 0);
+        var occupiedHouseIds = ownerHouseRelMapper.selectList(relWrapper).stream()
+                .map(OwnerHouseRel::getHouseInfoId)
+                .collect(Collectors.toSet());
+
+        // 过滤掉已被占用的房屋
+        return allHouses.stream()
+                .filter(h -> !occupiedHouseIds.contains(h.getId()))
+                .map(this::toVO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<HouseVO> listAll(Long communityId) {
+        LambdaQueryWrapper<HouseInfo> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(HouseInfo::getIsDeleted, 0);
+
+        if (communityId != null) {
+            // 先查出该小区下所有楼栋ID
+            LambdaQueryWrapper<BuildingInfo> buildingWrapper = new LambdaQueryWrapper<>();
+            buildingWrapper.eq(BuildingInfo::getCommunityId, communityId)
+                    .eq(BuildingInfo::getIsDeleted, 0);
+            List<Long> buildingIds = buildingInfoMapper.selectList(buildingWrapper).stream()
+                    .map(BuildingInfo::getId)
+                    .collect(Collectors.toList());
+            if (buildingIds.isEmpty()) {
+                return List.of();
+            }
+            wrapper.in(HouseInfo::getBuildingId, buildingIds);
+        }
+
+        wrapper.orderByAsc(HouseInfo::getHouseNumber);
         return this.list(wrapper).stream()
                 .map(this::toVO)
                 .collect(Collectors.toList());

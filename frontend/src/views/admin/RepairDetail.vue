@@ -232,7 +232,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDate } from '@/utils/format'
-import { getRepairDetail, assignRepair, completeRepair } from '@/api/repair'
+import { getRepairDetail, assignRepair, completeRepair, getRepairers } from '@/api/repair'
 import type { RepairVO } from '@/api/repair'
 
 defineOptions({
@@ -317,16 +317,8 @@ const loadDetail = async () => {
  */
 const loadRepairers = async () => {
   try {
-    // 接口：GET /api/v1/users/repairers
-    // const { data } = await getRepairers()
-    // repairers.value = data
-
-    // 临时数据，等待后端接口
-    repairers.value = [
-      { id: 1, userName: 'repairer1', fullName: '张师傅' },
-      { id: 2, userName: 'repairer2', fullName: '李师傅' },
-      { id: 3, userName: 'repairer3', fullName: '王师傅' },
-    ]
+    const { data } = await getRepairers()
+    repairers.value = data
   } catch (error) {
     console.error('加载维修人员失败:', error)
   }
@@ -362,7 +354,7 @@ const handleAssign = async () => {
   try {
     await assignRepair({
       orderId: detail.value.id,
-      repairerId: assignDialog.repairerId,
+      assigneeId: assignDialog.repairerId,
     })
     await loadDetail()
     assignDialog.visible = false

@@ -24,19 +24,25 @@ import com.example.spms.model.vo.OwnerBillVO;
 import com.example.spms.model.vo.PaymentRecordVO;
 import com.example.spms.service.BillInfoService;
 import com.example.spms.service.FeeItemService;
+import com.example.spms.service.HouseInfoService;
 import com.example.spms.service.OwnerHouseRelService;
 import com.example.spms.service.OwnerInfoService;
+import com.example.spms.model.po.HouseInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -55,6 +61,7 @@ public class BillInfoServiceImpl extends ServiceImpl<BillInfoMapper, BillInfo>
     private final FeeItemService feeItemService;
     private final OwnerInfoService ownerInfoService;
     private final OwnerHouseRelService ownerHouseRelService;
+    private final HouseInfoService houseInfoService;
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -253,6 +260,145 @@ public class BillInfoServiceImpl extends ServiceImpl<BillInfoMapper, BillInfo>
                 .deadline(formatDate(b.getPayDeadline()))
                 .build()
         ).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int autoGenerateMonthlyBills(String billPeriod) {
+        // 解析账单周期
+        YearMonth yearMonth;
+        try {
+            yearMonth = YearMonth.parse(billPeriod, DateTimeFormatter.ofPattern("yyyy-MM"));
+        } catch (Exception e) {
+            throw new CustomException(ResultCode.FAIL, "账单周期格式错误，应为 yyyy-MM");
+        }
+
+        // 获取所有启用的费用项目，排除“按用量”计算的项目（calcMethod=4需要手动抄表）
+        List<FeeItem> feeItems = feeItemService.listEnabled().stream()
+                .filter(f -> f.getCalcMethod() != null && f.getCalcMethod() != 4)
+                .collect(Collectors.toList());
+        if (feeItems.isEmpty()) {
+            return 0;
+        }
+
+        // 多业主模式：按房屋维度生成账单。获取所有有效关联的房屋（有业主关联的房屋）
+        List<OwnerHouseRel> allRels = ownerHouseRelService.list(new LambdaQueryWrapper<OwnerHouseRel>()
+                .eq(OwnerHouseRel::getIsDeleted, 0));
+        // 按房屋去重，每个房屋取第一个业主作为账单归属人
+        Map<Long, Long> houseOwnerMap = allRels.stream()
+                .collect(Collectors.toMap(
+                        OwnerHouseRel::getHouseInfoId,
+                        OwnerHouseRel::getOwnerInfoId,
+                        (existing, replacement) -> existing // 取第一个
+                ));
+        Set<Long> occupiedHouseIds = houseOwnerMap.keySet();
+
+        if (occupiedHouseIds.isEmpty()) {
+            return 0;
+        }
+
+        // 批量查询房屋面积信息
+        Map<Long, HouseInfo> houseInfoMap = houseInfoService.listByIds(occupiedHouseIds).stream()
+                .collect(Collectors.toMap(HouseInfo::getId, h -> h, (a, b) -> a));
+
+        // 构建费用项目Map，方便查找
+        Map<Long, FeeItem> feeItemMap = feeItems.stream()
+                .collect(Collectors.toMap(FeeItem::getId, f -> f, (a, b) -> a));
+
+        // 查询该周期已存在的账单，避免重复生成（按houseId + feeItemId去重）
+        List<BillInfo> existingBills = list(new LambdaQueryWrapper<BillInfo>()
+                .eq(BillInfo::getBillPeriod, billPeriod)
+                .eq(BillInfo::getIsDeleted, 0));
+        Set<String> existingKeys = existingBills.stream()
+                .map(b -> b.getHouseId() + "_" + b.getFeeItemId())
+                .collect(Collectors.toSet());
+
+        // 截止日期：当月最后一天
+        LocalDate deadline = yearMonth.atEndOfMonth();
+        Date deadlineDate = java.sql.Timestamp.valueOf(deadline.atStartOfDay());
+        Date now = new Date();
+
+        List<BillInfo> newBills = new ArrayList<>();
+
+        for (FeeItem feeItem : feeItems) {
+            for (Long houseId : occupiedHouseIds) {
+                // 跳过已存在账单的房屋+费用项目组合
+                String key = houseId + "_" + feeItem.getId();
+                if (existingKeys.contains(key)) {
+                    continue;
+                }
+
+                HouseInfo houseInfo = houseInfoMap.get(houseId);
+                if (houseInfo == null) {
+                    continue;
+                }
+
+                // 停车费(itemType=4)：需要检查房屋是否有车位
+                if (feeItem.getItemType() != null && feeItem.getItemType() == 4) {
+                    if (houseInfo.getHasParking() == null || houseInfo.getHasParking() != 1) {
+                        continue; // 没有车位，不生成停车费账单
+                    }
+                }
+
+                // 根据 calcMethod 计算账单金额
+                BigDecimal amount = calculateBillAmount(feeItem, houseInfo);
+                if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+                    continue;
+                }
+
+                Long ownerId = houseOwnerMap.get(houseId);
+
+                BillInfo bill = new BillInfo();
+                bill.setBillNo("BILL" + System.currentTimeMillis() + String.format("%04d", (int)(Math.random() * 10000)));
+                bill.setHouseId(houseId);
+                bill.setOwnerId(ownerId);
+                bill.setFeeItemId(feeItem.getId());
+                bill.setBillPeriod(billPeriod);
+                bill.setBillAmount(amount);
+                bill.setPaidAmount(BigDecimal.ZERO);
+                bill.setStatus(BillStatus.UNPAID.getCode());
+                bill.setPayDeadline(deadlineDate);
+                bill.setIsDeleted(0);
+                bill.setVersion(1);
+                bill.setCreateTime(now);
+                bill.setUpdateTime(now);
+                newBills.add(bill);
+            }
+        }
+
+        if (!newBills.isEmpty()) {
+            saveBatch(newBills);
+        }
+
+        return newBills.size();
+    }
+
+    /**
+     * 根据费用项目的计算方式计算账单金额
+     * calcMethod: 1-固定金额 2-按面积 3-按户
+     */
+    private BigDecimal calculateBillAmount(FeeItem feeItem, HouseInfo houseInfo) {
+        if (feeItem.getUnitPrice() == null) {
+            return null;
+        }
+        Integer calcMethod = feeItem.getCalcMethod();
+        if (calcMethod == null) {
+            return null;
+        }
+        switch (calcMethod) {
+            case 1: // 固定金额
+                return feeItem.getUnitPrice();
+            case 2: // 按面积
+                BigDecimal area = houseInfo.getHouseArea();
+                if (area == null || area.compareTo(BigDecimal.ZERO) <= 0) {
+                    return null;
+                }
+                return feeItem.getUnitPrice().multiply(area).setScale(2, RoundingMode.HALF_UP);
+            case 3: // 按户
+                return feeItem.getUnitPrice();
+            default:
+                return null;
+        }
     }
 
     private String getItemName(Long feeItemId) {

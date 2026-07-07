@@ -12,6 +12,8 @@ public interface DashboardService {
 
     /**
      * 获取全局统计数据
+     *
+     * @param communityId 小区ID，为 null 时统计全部
      */
-    DashboardStatsVO getStats();
+    DashboardStatsVO getStats(Long communityId);
 }

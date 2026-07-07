@@ -36,4 +36,10 @@ public class UserDetailVO {
 
     /** 角色名称列表 */
     private List<String> roleNames;
+
+    /** 所属小区ID */
+    private Long communityId;
+
+    /** 所属小区名称 */
+    private String communityName;
 }

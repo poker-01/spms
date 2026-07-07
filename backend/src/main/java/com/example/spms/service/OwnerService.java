@@ -19,7 +19,7 @@ import java.util.List;
 
 public interface OwnerService extends IService<OwnerInfo> {
 
-    Page<OwnerVO> pageQuery(OwnerQueryRequest request);
+    Page<OwnerVO> pageQuery(OwnerQueryRequest request, Long communityId);
 
     void saveOwner(OwnerSaveRequest request);
 
@@ -31,7 +31,7 @@ public interface OwnerService extends IService<OwnerInfo> {
 
     List<OwnerHouseRelVO> listOwnerHouses(Long ownerId);
 
-    List<OwnerVO> listAll();
+    List<OwnerVO> listAll(Long communityId);
 
     List<OwnerVO> listUnlinkedOwners();
 

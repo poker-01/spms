@@ -103,9 +103,58 @@ public class OwnerServiceImpl extends ServiceImpl<OwnerInfoMapper, OwnerInfo>
     );
 
     @Override
-    public Page<OwnerVO> pageQuery(OwnerQueryRequest request) {
+    public Page<OwnerVO> pageQuery(OwnerQueryRequest request, Long communityId) {
         LambdaQueryWrapper<OwnerInfo> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(OwnerInfo::getIsDeleted, 0);
+
+        // 非超级管理员，仅查询自己小区下的业主
+        if (communityId != null) {
+            // 通过 owner_house_rel -> house_info -> building_info 获取该小区下的业主ID
+            var buildingIds = buildingInfoMapper.selectList(
+                    new LambdaQueryWrapper<BuildingInfo>()
+                            .eq(BuildingInfo::getCommunityId, communityId)
+                            .eq(BuildingInfo::getIsDeleted, 0))
+                    .stream().map(BuildingInfo::getId).toList();
+            if (buildingIds.isEmpty()) {
+                Page<OwnerVO> emptyPage = new Page<>();
+                emptyPage.setTotal(0L);
+                emptyPage.setPages(0L);
+                emptyPage.setCurrent(request.getPageNum());
+                emptyPage.setSize(request.getPageSize());
+                emptyPage.setRecords(List.of());
+                return emptyPage;
+            }
+            var houseIds = houseInfoMapper.selectList(
+                    new LambdaQueryWrapper<HouseInfo>()
+                            .in(HouseInfo::getBuildingId, buildingIds)
+                            .eq(HouseInfo::getIsDeleted, 0))
+                    .stream().map(HouseInfo::getId).toList();
+            if (houseIds.isEmpty()) {
+                Page<OwnerVO> emptyPage = new Page<>();
+                emptyPage.setTotal(0L);
+                emptyPage.setPages(0L);
+                emptyPage.setCurrent(request.getPageNum());
+                emptyPage.setSize(request.getPageSize());
+                emptyPage.setRecords(List.of());
+                return emptyPage;
+            }
+            var ownerIds = ownerHouseRelMapper.selectList(
+                    new LambdaQueryWrapper<OwnerHouseRel>()
+                            .in(OwnerHouseRel::getHouseInfoId, houseIds)
+                            .eq(OwnerHouseRel::getIsDeleted, 0))
+                    .stream().map(OwnerHouseRel::getOwnerInfoId).distinct().toList();
+            if (ownerIds.isEmpty()) {
+                Page<OwnerVO> emptyPage = new Page<>();
+                emptyPage.setTotal(0L);
+                emptyPage.setPages(0L);
+                emptyPage.setCurrent(request.getPageNum());
+                emptyPage.setSize(request.getPageSize());
+                emptyPage.setRecords(List.of());
+                return emptyPage;
+            }
+            wrapper.in(OwnerInfo::getId, ownerIds);
+        }
+
         wrapper.like(StringUtils.isNotBlank(request.getOwnerName()),
                 OwnerInfo::getOwnerName, request.getOwnerName());
         wrapper.eq(StringUtils.isNotBlank(request.getOwnerPhone()),
@@ -151,16 +200,35 @@ public class OwnerServiceImpl extends ServiceImpl<OwnerInfoMapper, OwnerInfo>
         this.save(entity);
 
         if (request.getHouseId() != null) {
+            // 仅防止同一业主重复绑定同一房屋（多业主模式：一个房屋可以有多个业主）
+            LambdaQueryWrapper<OwnerHouseRel> dupWrapper = new LambdaQueryWrapper<>();
+            dupWrapper.eq(OwnerHouseRel::getOwnerInfoId, entity.getId())
+                    .eq(OwnerHouseRel::getHouseInfoId, request.getHouseId())
+                    .eq(OwnerHouseRel::getIsDeleted, 0);
+            if (ownerHouseRelMapper.selectCount(dupWrapper) > 0) {
+                throw new CustomException(ResultCode.FAIL, "该业主已关联此房屋，请勿重复绑定");
+            }
+
             OwnerHouseRel rel = new OwnerHouseRel();
             rel.setOwnerInfoId(entity.getId());
             rel.setHouseInfoId(request.getHouseId());
             rel.setRelationType(1);
-            rel.setIsPrimary(1);
+            rel.setIsPrimary(0); // 多业主模式，不区分主业主
             rel.setIsDeleted(0);
             rel.setVersion(0);
             rel.setCreateTime(new Date());
             rel.setUpdateTime(new Date());
             ownerHouseRelMapper.insert(rel);
+
+            // 更新房屋是否有车位
+            if (request.getHasParking() != null) {
+                HouseInfo houseInfo = houseInfoMapper.selectById(request.getHouseId());
+                if (houseInfo != null) {
+                    houseInfo.setHasParking(request.getHasParking());
+                    houseInfo.setUpdateTime(new Date());
+                    houseInfoMapper.updateById(houseInfo);
+                }
+            }
         }
     }
 
@@ -247,10 +315,42 @@ public class OwnerServiceImpl extends ServiceImpl<OwnerInfoMapper, OwnerInfo>
     }
 
     @Override
-    public List<OwnerVO> listAll() {
+    public List<OwnerVO> listAll(Long communityId) {
         LambdaQueryWrapper<OwnerInfo> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(OwnerInfo::getIsDeleted, 0)
-                .orderByAsc(OwnerInfo::getOwnerName);
+        wrapper.eq(OwnerInfo::getIsDeleted, 0);
+
+        if (communityId != null) {
+            var buildingIds = buildingInfoMapper.selectList(
+                    new LambdaQueryWrapper<BuildingInfo>()
+                            .eq(BuildingInfo::getCommunityId, communityId)
+                            .eq(BuildingInfo::getIsDeleted, 0))
+                    .stream().map(BuildingInfo::getId).toList();
+            if (!buildingIds.isEmpty()) {
+                var houseIds = houseInfoMapper.selectList(
+                        new LambdaQueryWrapper<HouseInfo>()
+                                .in(HouseInfo::getBuildingId, buildingIds)
+                                .eq(HouseInfo::getIsDeleted, 0))
+                        .stream().map(HouseInfo::getId).toList();
+                if (!houseIds.isEmpty()) {
+                    var ownerIds = ownerHouseRelMapper.selectList(
+                            new LambdaQueryWrapper<OwnerHouseRel>()
+                                    .in(OwnerHouseRel::getHouseInfoId, houseIds)
+                                    .eq(OwnerHouseRel::getIsDeleted, 0))
+                            .stream().map(OwnerHouseRel::getOwnerInfoId).distinct().toList();
+                    if (!ownerIds.isEmpty()) {
+                        wrapper.in(OwnerInfo::getId, ownerIds);
+                    } else {
+                        return List.of();
+                    }
+                } else {
+                    return List.of();
+                }
+            } else {
+                return List.of();
+            }
+        }
+
+        wrapper.orderByAsc(OwnerInfo::getOwnerName);
         return this.list(wrapper).stream()
                 .map(this::toVO)
                 .collect(Collectors.toList());
@@ -296,12 +396,16 @@ public class OwnerServiceImpl extends ServiceImpl<OwnerInfoMapper, OwnerInfo>
         long complaintCount = 0;
 
         if (owner != null) {
-            pendingBillCount = billInfoMapper.selectCount(
-                    new LambdaQueryWrapper<BillInfo>()
-                            .eq(BillInfo::getOwnerId, owner.getId())
-                            .eq(BillInfo::getStatus, 0)
-                            .eq(BillInfo::getIsDeleted, 0)
-            );
+            // 多业主模式：按房屋维度查询账单（一套房一份费，避免重复统计）
+            List<Long> houseIds = getHouseIdsByOwnerId(owner.getId());
+            if (!houseIds.isEmpty()) {
+                pendingBillCount = billInfoMapper.selectCount(
+                        new LambdaQueryWrapper<BillInfo>()
+                                .in(BillInfo::getHouseId, houseIds)
+                                .eq(BillInfo::getStatus, 0)
+                                .eq(BillInfo::getIsDeleted, 0)
+                );
+            }
 
             repairCount = repairOrderMapper.selectCount(
                     new LambdaQueryWrapper<RepairOrder>()
@@ -316,15 +420,26 @@ public class OwnerServiceImpl extends ServiceImpl<OwnerInfoMapper, OwnerInfo>
             );
         }
 
+        // 获取业主关联的房屋地址
+        List<String> houseAddresses = List.of();
+        if (owner != null) {
+            houseAddresses = listOwnerHouses(owner.getId()).stream()
+                    .map(OwnerHouseRelVO::getHouseFullName)
+                    .filter(org.springframework.util.StringUtils::hasText)
+                    .collect(Collectors.toList());
+        }
+
         return OwnerHomeVO.builder()
                 .userId(userId)
                 .userName(user.getUserName())
                 .fullName(user.getFullName())
                 .phoneNumber(user.getPhoneNumber())
+                .email(user.getEmail())
                 .roles(roles)
                 .pendingBillCount((int) pendingBillCount)
                 .repairCount((int) repairCount)
                 .complaintCount((int) complaintCount)
+                .houseAddresses(houseAddresses)
                 .build();
     }
 
@@ -335,9 +450,15 @@ public class OwnerServiceImpl extends ServiceImpl<OwnerInfoMapper, OwnerInfo>
             return List.of();
         }
 
+        // 多业主模式：按房屋维度查询账单（一套房一份费，多业主共享查看）
+        List<Long> houseIds = getHouseIdsByOwnerId(owner.getId());
+        if (houseIds.isEmpty()) {
+            return List.of();
+        }
+
         List<BillInfo> bills = billInfoMapper.selectList(
                 new LambdaQueryWrapper<BillInfo>()
-                        .eq(BillInfo::getOwnerId, owner.getId())
+                        .in(BillInfo::getHouseId, houseIds)
                         .eq(BillInfo::getIsDeleted, 0)
                         .orderByDesc(BillInfo::getCreateTime)
         );
@@ -363,10 +484,12 @@ public class OwnerServiceImpl extends ServiceImpl<OwnerInfoMapper, OwnerInfo>
             throw new CustomException(ResultCode.NOT_FOUND, "业主信息不存在");
         }
 
+        // 多业主模式：校验账单归属的房屋是否属于该业主关联的房屋
+        List<Long> houseIds = getHouseIdsByOwnerId(owner.getId());
         BillInfo bill = billInfoMapper.selectOne(
                 new LambdaQueryWrapper<BillInfo>()
                         .eq(BillInfo::getId, billId)
-                        .eq(BillInfo::getOwnerId, owner.getId())
+                        .in(BillInfo::getHouseId, houseIds)
                         .eq(BillInfo::getIsDeleted, 0)
                         .last("LIMIT 1")
         );
@@ -385,10 +508,12 @@ public class OwnerServiceImpl extends ServiceImpl<OwnerInfoMapper, OwnerInfo>
             throw new CustomException(ResultCode.NOT_FOUND, "业主信息不存在");
         }
 
+        // 多业主模式：校验账单归属的房屋是否属于该业主关联的房屋
+        List<Long> houseIds = getHouseIdsByOwnerId(owner.getId());
         BillInfo bill = billInfoMapper.selectOne(
                 new LambdaQueryWrapper<BillInfo>()
                         .eq(BillInfo::getId, billId)
-                        .eq(BillInfo::getOwnerId, owner.getId())
+                        .in(BillInfo::getHouseId, houseIds)
                         .eq(BillInfo::getIsDeleted, 0)
                         .last("LIMIT 1")
         );
@@ -491,10 +616,10 @@ public class OwnerServiceImpl extends ServiceImpl<OwnerInfoMapper, OwnerInfo>
             throw new CustomException(ResultCode.NOT_FOUND, "业主信息不存在");
         }
 
+        // 多业主模式：取该业主关联的任一房屋即可
         OwnerHouseRel rel = ownerHouseRelMapper.selectOne(
                 new LambdaQueryWrapper<OwnerHouseRel>()
                         .eq(OwnerHouseRel::getOwnerInfoId, owner.getId())
-                        .eq(OwnerHouseRel::getIsPrimary, 1)
                         .eq(OwnerHouseRel::getIsDeleted, 0)
                         .last("LIMIT 1")
         );
@@ -563,10 +688,10 @@ public class OwnerServiceImpl extends ServiceImpl<OwnerInfoMapper, OwnerInfo>
             throw new CustomException(ResultCode.NOT_FOUND, "业主信息不存在");
         }
 
+        // 多业主模式：取该业主关联的任一房屋即可
         OwnerHouseRel rel = ownerHouseRelMapper.selectOne(
                 new LambdaQueryWrapper<OwnerHouseRel>()
                         .eq(OwnerHouseRel::getOwnerInfoId, owner.getId())
-                        .eq(OwnerHouseRel::getIsPrimary, 1)
                         .eq(OwnerHouseRel::getIsDeleted, 0)
                         .last("LIMIT 1")
         );
@@ -682,6 +807,19 @@ public class OwnerServiceImpl extends ServiceImpl<OwnerInfoMapper, OwnerInfo>
         wrapper.eq(OwnerInfo::getOwnerPhone, user.getPhoneNumber())
                 .eq(OwnerInfo::getIsDeleted, 0);
         return this.getOne(wrapper);
+    }
+
+    /**
+     * 根据业主ID获取其关联的所有房屋ID列表（多业主模式）
+     */
+    private List<Long> getHouseIdsByOwnerId(Long ownerId) {
+        LambdaQueryWrapper<OwnerHouseRel> relWrapper = new LambdaQueryWrapper<>();
+        relWrapper.eq(OwnerHouseRel::getOwnerInfoId, ownerId)
+                .eq(OwnerHouseRel::getIsDeleted, 0);
+        return ownerHouseRelMapper.selectList(relWrapper).stream()
+                .map(OwnerHouseRel::getHouseInfoId)
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     private String formatDate(Date date) {

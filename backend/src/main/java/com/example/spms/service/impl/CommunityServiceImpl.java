@@ -27,7 +27,7 @@ public class CommunityServiceImpl extends ServiceImpl<CommunityInfoMapper, Commu
         implements CommunityService {
 
     @Override
-    public Page<CommunityVO> pageQuery(CommunityQueryRequest request) {
+    public Page<CommunityVO> pageQuery(CommunityQueryRequest request, Long communityId) {
         LambdaQueryWrapper<CommunityInfo> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CommunityInfo::getIsDeleted, 0);
         wrapper.like(StringUtils.isNotBlank(request.getCommunityName()),
@@ -36,6 +36,10 @@ public class CommunityServiceImpl extends ServiceImpl<CommunityInfoMapper, Commu
                 CommunityInfo::getCity, request.getCity());
         wrapper.eq(request.getStatus() != null,
                 CommunityInfo::getStatus, request.getStatus());
+        // 非超级管理员，仅查询自己绑定的小区
+        if (communityId != null) {
+            wrapper.eq(CommunityInfo::getId, communityId);
+        }
         wrapper.orderByDesc(CommunityInfo::getCreateTime);
 
         // 使用 MyBatis-Plus 的 Page（使用完全限定名，不导入）
@@ -109,10 +113,14 @@ public class CommunityServiceImpl extends ServiceImpl<CommunityInfoMapper, Commu
     }
 
     @Override
-    public List<CommunityVO> listAll() {
+    public List<CommunityVO> listAll(Long communityId) {
         LambdaQueryWrapper<CommunityInfo> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CommunityInfo::getIsDeleted, 0)
-                .orderByAsc(CommunityInfo::getCommunityName);
+        wrapper.eq(CommunityInfo::getIsDeleted, 0);
+        // 非超级管理员，仅查询自己绑定的小区
+        if (communityId != null) {
+            wrapper.eq(CommunityInfo::getId, communityId);
+        }
+        wrapper.orderByAsc(CommunityInfo::getCommunityName);
         return this.list(wrapper).stream()
                 .map(this::toVO)
                 .collect(Collectors.toList());

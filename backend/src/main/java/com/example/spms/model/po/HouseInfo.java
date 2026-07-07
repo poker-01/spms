@@ -22,6 +22,7 @@ public class HouseInfo implements Serializable {
     private String houseType;
     private String ownerName;
     private String ownerPhone;
+    private Integer hasParking;
     private Integer status;
     private Integer isDeleted;
     private Integer version;

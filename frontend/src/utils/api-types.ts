@@ -21,6 +21,8 @@ export interface UserInfo {
   avatarAddress?: string
   roles: string[]
   permissions: string[]
+  communityId?: number
+  communityName?: string
 }
 
 export interface LoginData {
@@ -164,10 +166,12 @@ export interface OwnerHomeData {
   userName: string
   fullName: string
   phoneNumber?: string
+  email?: string
   roles?: string[]
   pendingBillCount: number
   repairCount: number
   complaintCount: number
+  houseAddresses?: string[]
 }
 
 export interface OwnerBill {
@@ -423,6 +427,7 @@ export interface OwnerSave {
   status: number
   remark?: string
   houseId?: number
+  hasParking?: number
 }
 
 export interface OwnerUpdate {

@@ -20,8 +20,11 @@ export interface RepairVO {
   evaluateComment?: string
   createTime: string
   repairTime?: string
+  assignTime?: string
+  updateTime?: string
   ownerName?: string
   repairerName?: string
+  assigneeName?: string
   repairerId?: number
 }
 
@@ -106,6 +109,14 @@ export interface RepairerInfo {
  */
 export const getUsersByRole = (roleId: number) => {
   return request.get<RepairerInfo[]>(`/api/v1/users/by-role/${roleId}`)
+}
+
+/**
+ * 接口：GET /api/v1/repairs/repairers
+ * 功能：获取维修人员列表（用于派单下拉选择，仅需 repair:assign 权限）
+ */
+export const getRepairers = () => {
+  return request.get<RepairerInfo[]>('/api/v1/repairs/repairers')
 }
 
 /**

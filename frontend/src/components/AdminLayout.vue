@@ -4,7 +4,7 @@ import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useAuth } from '@/utils/useAuth'
-import { formatRoleLabels } from '@/utils/role'
+import { formatRoleLabels, isRepairUser } from '@/utils/role'
 import type { MenuItem } from '@/utils/api-types'
 
 defineOptions({
@@ -137,6 +137,12 @@ const handleLogout = async () => {
 
     <div class="admin-layout__main">
       <header class="admin-layout__header">
+        <div class="admin-layout__header-left">
+          <span v-if="userStore.userInfo?.communityName" class="admin-layout__community">
+            <svg class="admin-layout__community-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 3L4 9v12h5v-7h6v7h5V9z"/></svg>
+            {{ userStore.userInfo.communityName }}
+          </span>
+        </div>
         <div class="admin-layout__header-info">
           <span class="admin-layout__role">{{ roleText }}</span>
           <span class="admin-layout__user">
@@ -147,7 +153,7 @@ const handleLogout = async () => {
       </header>
 
       <main class="admin-layout__content">
-        <div class="admin-layout__overview-bar">
+        <div v-if="!isRepairUser(userStore.userInfo?.roles ?? [])" class="admin-layout__overview-bar">
           <button class="admin-layout__overview-btn" type="button" @click="navigate('/admin/home')">
             <span class="admin-layout__overview-icon">📊</span>
             <span>系统总览</span>
@@ -371,6 +377,29 @@ const handleLogout = async () => {
   height: 64px;
   background: var(--color-card);
   border-bottom: 1px solid var(--color-border);
+}
+
+.admin-layout__header-left {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+}
+
+.admin-layout__community {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  color: #1d4ed8;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid #bfdbfe;
+}
+
+.admin-layout__community-icon {
+  flex-shrink: 0;
 }
 
 .admin-layout__header-info {

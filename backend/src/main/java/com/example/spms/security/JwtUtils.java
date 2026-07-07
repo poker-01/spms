@@ -19,6 +19,13 @@ public class JwtUtils {
     @Value("${jwt.expiration}")
     private long expiration;
 
+    private SecretKey getSigningKey() {
+        byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+        byte[] keyBytes = new byte[32];
+        System.arraycopy(secretBytes, 0, keyBytes, 0, Math.min(secretBytes.length, 32));
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
     public String generateToken(Long userId, String username) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
@@ -50,10 +57,5 @@ public class JwtUtils {
         } catch (Exception e) {
             return false;
         }
-    }
-
-    private SecretKey getSigningKey() {
-        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
     }
 }

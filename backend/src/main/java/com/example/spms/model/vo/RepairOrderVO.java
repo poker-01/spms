@@ -47,6 +47,10 @@ public class RepairOrderVO {
 
     private Integer evaluateScore;
 
+    private String assignTime;
+
+    private String repairTime;
+
     private String createTime;
 
     private String updateTime;

@@ -19,10 +19,7 @@ const dialogTitle = ref('新增小区')
 const isEdit = ref(false)
 
 const searchForm = reactive({
-  communityName: '',
-  province: '',
-  city: '',
-  district: ''
+  communityName: ''
 })
 
 const pagination = reactive({
@@ -75,9 +72,6 @@ const handleSearch = () => {
 
 const handleReset = () => {
   searchForm.communityName = ''
-  searchForm.province = ''
-  searchForm.city = ''
-  searchForm.district = ''
   handleSearch()
 }
 
@@ -193,18 +187,6 @@ onMounted(() => {
           <div class="search-row__item">
             <label class="search-row__label">小区名称</label>
             <input v-model="searchForm.communityName" placeholder="请输入小区名称" class="form-input" />
-          </div>
-          <div class="search-row__item">
-            <label class="search-row__label">省份</label>
-            <input v-model="searchForm.province" placeholder="请输入省份" class="form-input" />
-          </div>
-          <div class="search-row__item">
-            <label class="search-row__label">城市</label>
-            <input v-model="searchForm.city" placeholder="请输入城市" class="form-input" />
-          </div>
-          <div class="search-row__item">
-            <label class="search-row__label">区域</label>
-            <input v-model="searchForm.district" placeholder="请输入区域" class="form-input" />
           </div>
           <div class="search-row__actions">
             <button class="btn btn-primary" @click="handleSearch">搜索</button>

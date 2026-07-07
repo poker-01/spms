@@ -23,7 +23,7 @@ import java.util.Map;
 public interface RepairOrderMapper extends BaseMapper<RepairOrder> {
 
     /**
-     * 分页查询报修工单（关联业主、房屋、维修人员信息）
+     * 分页查询报修工单（关联业主、房屋、维修人员信息，支持按小区过滤）
      */
     IPage<Map<String, Object>> selectRepairOrderPage(Page<?> page,
                                                       @Param("keyword") String keyword,
@@ -33,7 +33,8 @@ public interface RepairOrderMapper extends BaseMapper<RepairOrder> {
                                                       @Param("ownerId") Long ownerId,
                                                       @Param("assigneeId") Long assigneeId,
                                                       @Param("startTime") String startTime,
-                                                      @Param("endTime") String endTime);
+                                                      @Param("endTime") String endTime,
+                                                      @Param("communityId") Long communityId);
 
     /**
      * 查询报修工单详情

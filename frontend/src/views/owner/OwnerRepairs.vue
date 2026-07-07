@@ -250,11 +250,16 @@ const applyPagination = () => {
 const loadRepairs = async () => {
   loading.value = true
   try {
-    const { data } = await getOwnerRepairs()
-    allRepairs.value = data
+    const res = await getOwnerRepairs()
+    console.log('[OwnerRepairs] 接口返回:', res)
+    allRepairs.value = Array.isArray(res.data) ? res.data : []
+    if (!Array.isArray(res.data) || res.data.length === 0) {
+      console.warn('[OwnerRepairs] 报修列表为空，请检查后端返回数据')
+    }
     applyPagination()
-  } catch (error) {
+  } catch (error: any) {
     console.error('加载报修列表失败:', error)
+    alert('加载报修列表失败: ' + (error?.message || '未知错误'))
   } finally {
     loading.value = false
   }

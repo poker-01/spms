@@ -189,6 +189,16 @@ export const generateBills = (data: {
 }
 
 /**
+ * 接口：POST /api/v1/finance/bills/auto-generate
+ * 功能：一键生成月度账单（为所有业主、所有启用的费用项目自动生成）
+ * @param billPeriod 账单周期，格式如 "2026-07"，不传则为当月
+ * @returns 生成的账单数量
+ */
+export const autoGenerateMonthlyBills = (billPeriod?: string) => {
+  return request.post<number>('/api/v1/finance/bills/auto-generate', null, { params: { billPeriod } })
+}
+
+/**
  * 接口：POST /api/v1/finance/bills/pay
  * 功能：缴费登记
  * 请求体：{ billId, payAmount, payMethod, receiptNo }

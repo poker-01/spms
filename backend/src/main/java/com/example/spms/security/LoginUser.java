@@ -16,11 +16,20 @@ public class LoginUser implements UserDetails {
     private final SysUserInfo user;
     private final List<String> roleCodes;
     private final List<String> permissionStrs;
+    private final Long communityId;
+    private final String communityName;
 
     public LoginUser(SysUserInfo user, List<String> roleCodes, List<String> permissionStrs) {
+        this(user, roleCodes, permissionStrs, null, null);
+    }
+
+    public LoginUser(SysUserInfo user, List<String> roleCodes, List<String> permissionStrs,
+                     Long communityId, String communityName) {
         this.user = user;
         this.roleCodes = roleCodes;
         this.permissionStrs = permissionStrs;
+        this.communityId = communityId;
+        this.communityName = communityName;
     }
 
     @Override

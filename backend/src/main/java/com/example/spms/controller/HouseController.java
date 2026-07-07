@@ -1,17 +1,20 @@
 package com.example.spms.controller;
 
+import com.example.spms.common.CommunityFilterHelper;
 import com.example.spms.common.Page;
 import com.example.spms.common.Result;
 import com.example.spms.model.bo.HouseQueryRequest;
 import com.example.spms.model.bo.HouseSaveRequest;
 import com.example.spms.model.bo.HouseUpdateRequest;
 import com.example.spms.model.vo.HouseVO;
+import com.example.spms.security.LoginUser;
 import com.example.spms.service.HouseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,8 +30,10 @@ public class HouseController {
     @Operation(summary = "分页查询房屋")
     @GetMapping("/page")
     @PreAuthorize("hasAuthority('house:query')")
-    public Result<Page<HouseVO>> page(HouseQueryRequest request) {
-        return Result.success(houseService.pageQuery(request));
+    public Result<Page<HouseVO>> page(HouseQueryRequest request,
+                                      @AuthenticationPrincipal LoginUser loginUser) {
+        Long communityId = CommunityFilterHelper.getCommunityId(loginUser);
+        return Result.success(houseService.pageQuery(request, communityId));
     }
 
     @Operation(summary = "查询某楼栋所有房屋（关联查询）")
@@ -36,6 +41,13 @@ public class HouseController {
     @PreAuthorize("hasAuthority('house:query')")
     public Result<List<HouseVO>> listByBuilding(@PathVariable Long buildingId) {
         return Result.success(houseService.listByBuildingId(buildingId));
+    }
+
+    @Operation(summary = "查询某楼栋下未被占用的房屋（新增业主选择用）")
+    @GetMapping("/by-building/{buildingId}/available")
+    @PreAuthorize("hasAuthority('house:query')")
+    public Result<List<HouseVO>> listAvailableByBuilding(@PathVariable Long buildingId) {
+        return Result.success(houseService.listAvailableByBuildingId(buildingId));
     }
 
     @Operation(summary = "查询某业主所有房屋（关联查询）")
@@ -48,8 +60,9 @@ public class HouseController {
     @Operation(summary = "查询全部房屋（下拉列表用）")
     @GetMapping("/list")
     @PreAuthorize("hasAuthority('house:query')")
-    public Result<List<HouseVO>> list() {
-        return Result.success(houseService.listAll());
+    public Result<List<HouseVO>> list(@AuthenticationPrincipal LoginUser loginUser) {
+        Long communityId = CommunityFilterHelper.getCommunityId(loginUser);
+        return Result.success(houseService.listAll(communityId));
     }
 
     @Operation(summary = "查询房屋详情")

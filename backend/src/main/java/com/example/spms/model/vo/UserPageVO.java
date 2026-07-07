@@ -28,4 +28,10 @@ public class UserPageVO {
     private Date createTime;
 
     private List<String> roleNames;
+
+    /** 所属小区ID */
+    private Long communityId;
+
+    /** 所属小区名称 */
+    private String communityName;
 }

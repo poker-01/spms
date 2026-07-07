@@ -31,6 +31,8 @@ public class SysUserInfo implements Serializable {
 
     private Integer status;
 
+    private Long communityId;
+
     @TableLogic
     private Integer isDeleted;
 

@@ -20,4 +20,6 @@ public class OwnerSaveRequest {
 
     @NotNull(message = "关联房屋不能为空")
     private Long houseId;
+
+    private Integer hasParking;
 }
