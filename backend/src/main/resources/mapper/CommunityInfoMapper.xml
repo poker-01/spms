@@ -15,6 +15,7 @@
         <result property="totalBuildings" column="total_buildings" />
         <result property="totalUnits" column="total_units" />
         <result property="propertyCompany" column="property_company" />
+        <result property="managerId" column="manager_id" />
         <result property="managerName" column="manager_name" />
         <result property="managerPhone" column="manager_phone" />
         <result property="status" column="status" />
@@ -33,7 +34,7 @@
 
     <sql id="Base_Column_List">
         id,community_code,community_name,address,province,city,
-        district,total_buildings,total_units,property_company,manager_name,
+        district,total_buildings,total_units,property_company,manager_id,manager_name,
         manager_phone,status,is_deleted,version,create_time,
         update_time,create_user,update_user
     </sql>

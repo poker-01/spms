@@ -40,7 +40,10 @@ public class ComplaintController {
     @Operation(summary = "分页查询投诉建议")
     @GetMapping("/page")
     @PreAuthorize("hasAuthority('complaint:query')")
-    public Result<Page<ComplaintVO>> page(ComplaintQueryRequest request) {
+    public Result<Page<ComplaintVO>> page(@AuthenticationPrincipal LoginUser loginUser,
+                                          ComplaintQueryRequest request) {
+        // 小区管理员数据隔离：非超级管理员只能查看本小区投诉
+        request.setCommunityId(com.example.spms.common.CommunityFilterHelper.getCommunityId(loginUser));
         return Result.success(complaintSuggestionService.pageComplaints(request));
     }
 

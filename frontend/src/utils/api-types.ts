@@ -267,6 +267,7 @@ export interface CommunitySave {
   totalBuildings?: number
   totalUnits?: number
   propertyCompany?: string
+  managerId?: number
   managerName?: string
   managerPhone?: string
   status: number
@@ -284,6 +285,7 @@ export interface CommunityUpdate {
   totalBuildings?: number
   totalUnits?: number
   propertyCompany?: string
+  managerId?: number
   managerName?: string
   managerPhone?: string
   status?: number

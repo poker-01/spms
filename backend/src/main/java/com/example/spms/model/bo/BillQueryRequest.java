@@ -30,4 +30,9 @@ public class BillQueryRequest {
     private Integer page = 1;
 
     private Integer size = 10;
+
+    /**
+     * 小区ID，用于数据隔离（非超级管理员只能查看本小区账单）
+     */
+    private Long communityId;
 }

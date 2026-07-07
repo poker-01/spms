@@ -122,12 +122,6 @@ const router = createRouter({
           meta: { requiresAuth: true, portal: 'property' },
         },
         {
-          path: 'permissions',
-          name: 'PermissionManage',
-          component: () => import('@/views/admin/PermissionManage.vue'),
-          meta: { requiresAuth: true, portal: 'property' },
-        },
-        {
           path: 'user-roles',
           name: 'UserRoleAssign',
           component: () => import('@/views/admin/UserRoleAssign.vue'),

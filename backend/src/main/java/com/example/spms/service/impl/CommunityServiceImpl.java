@@ -6,10 +6,12 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.spms.common.Page;
 import com.example.spms.exception.CustomException;
 import com.example.spms.mapper.CommunityInfoMapper;
+import com.example.spms.mapper.SysUserInfoMapper;
 import com.example.spms.model.bo.CommunityQueryRequest;
 import com.example.spms.model.bo.CommunitySaveRequest;
 import com.example.spms.model.bo.CommunityUpdateRequest;
 import com.example.spms.model.po.CommunityInfo;
+import com.example.spms.model.po.SysUserInfo;
 import com.example.spms.model.vo.CommunityVO;
 import com.example.spms.service.CommunityService;
 import com.example.spms.enums.ResultCode;
@@ -25,6 +27,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CommunityServiceImpl extends ServiceImpl<CommunityInfoMapper, CommunityInfo>
         implements CommunityService {
+
+    private final SysUserInfoMapper sysUserInfoMapper;
 
     @Override
     public Page<CommunityVO> pageQuery(CommunityQueryRequest request, Long communityId) {
@@ -75,6 +79,17 @@ public class CommunityServiceImpl extends ServiceImpl<CommunityInfoMapper, Commu
 
         CommunityInfo entity = new CommunityInfo();
         BeanUtils.copyProperties(request, entity);
+
+        // 如果传入了managerId，根据ID查询用户信息并填充到实体中
+        if (request.getManagerId() != null) {
+            entity.setManagerId(request.getManagerId());
+            SysUserInfo manager = sysUserInfoMapper.selectById(request.getManagerId());
+            if (manager != null && manager.getIsDeleted() == 0) {
+                entity.setManagerName(manager.getFullName());
+                entity.setManagerPhone(manager.getPhoneNumber());
+            }
+        }
+
         entity.setIsDeleted(0);
         entity.setVersion(0);
         this.save(entity);
@@ -100,6 +115,17 @@ public class CommunityServiceImpl extends ServiceImpl<CommunityInfoMapper, Commu
         }
 
         BeanUtils.copyProperties(request, exist, "id");
+
+        // 如果传入了managerId，根据ID查询用户信息并填充到实体中
+        if (request.getManagerId() != null) {
+            exist.setManagerId(request.getManagerId());
+            SysUserInfo manager = sysUserInfoMapper.selectById(request.getManagerId());
+            if (manager != null && manager.getIsDeleted() == 0) {
+                exist.setManagerName(manager.getFullName());
+                exist.setManagerPhone(manager.getPhoneNumber());
+            }
+        }
+
         this.updateById(exist);
     }
 

@@ -23,6 +23,7 @@ public class CommunityInfo implements Serializable {
     private Integer totalBuildings;
     private Integer totalUnits;
     private String propertyCompany;
+    private Long managerId;
     private String managerName;
     private String managerPhone;
     private Integer status;

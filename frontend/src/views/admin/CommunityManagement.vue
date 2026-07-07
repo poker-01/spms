@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   pageCommunities,
@@ -8,10 +8,285 @@ import {
   deleteCommunity,
   getCommunity,
 } from '@/api/community'
+import { getUsersByRole } from '@/api/repair'
 import type { CommunitySave, CommunityUpdate } from '@/utils/api-types'
+
+// ============ 省市区数据 ============
+interface AreaOption {
+  value: string
+  label: string
+  children?: AreaOption[]
+}
+
+// 使用简化的省市区数据（主要省会城市和直辖市）
+const regionData: AreaOption[] = [
+  { value: '北京市', label: '北京市', children: [
+    { value: '北京市', label: '北京市', children: [
+      { value: '东城区', label: '东城区' }, { value: '西城区', label: '西城区' },
+      { value: '朝阳区', label: '朝阳区' }, { value: '丰台区', label: '丰台区' },
+      { value: '石景山区', label: '石景山区' }, { value: '海淀区', label: '海淀区' },
+      { value: '顺义区', label: '顺义区' }, { value: '通州区', label: '通州区' },
+      { value: '大兴区', label: '大兴区' }, { value: '房山区', label: '房山区' },
+      { value: '昌平区', label: '昌平区' }, { value: '怀柔区', label: '怀柔区' },
+      { value: '密云区', label: '密云区' }, { value: '延庆区', label: '延庆区' },
+      { value: '平谷区', label: '平谷区' }, { value: '门头沟区', label: '门头沟区' },
+    ]}
+  ]},
+  { value: '上海市', label: '上海市', children: [
+    { value: '上海市', label: '上海市', children: [
+      { value: '黄浦区', label: '黄浦区' }, { value: '徐汇区', label: '徐汇区' },
+      { value: '长宁区', label: '长宁区' }, { value: '静安区', label: '静安区' },
+      { value: '普陀区', label: '普陀区' }, { value: '虹口区', label: '虹口区' },
+      { value: '杨浦区', label: '杨浦区' }, { value: '浦东新区', label: '浦东新区' },
+      { value: '闵行区', label: '闵行区' }, { value: '宝山区', label: '宝山区' },
+      { value: '嘉定区', label: '嘉定区' }, { value: '金山区', label: '金山区' },
+      { value: '松江区', label: '松江区' }, { value: '青浦区', label: '青浦区' },
+      { value: '奉贤区', label: '奉贤区' }, { value: '崇明区', label: '崇明区' },
+    ]}
+  ]},
+  { value: '天津市', label: '天津市', children: [
+    { value: '天津市', label: '天津市', children: [
+      { value: '和平区', label: '和平区' }, { value: '河东区', label: '河东区' },
+      { value: '河西区', label: '河西区' }, { value: '南开区', label: '南开区' },
+      { value: '河北区', label: '河北区' }, { value: '红桥区', label: '红桥区' },
+      { value: '东丽区', label: '东丽区' }, { value: '西青区', label: '西青区' },
+      { value: '津南区', label: '津南区' }, { value: '北辰区', label: '北辰区' },
+      { value: '武清区', label: '武清区' }, { value: '宝坻区', label: '宝坻区' },
+      { value: '滨海新区', label: '滨海新区' }, { value: '宁河区', label: '宁河区' },
+      { value: '静海区', label: '静海区' }, { value: '蓟州区', label: '蓟州区' },
+    ]}
+  ]},
+  { value: '重庆市', label: '重庆市', children: [
+    { value: '重庆市', label: '重庆市', children: [
+      { value: '渝中区', label: '渝中区' }, { value: '江北区', label: '江北区' },
+      { value: '南岸区', label: '南岸区' }, { value: '沙坪坝区', label: '沙坪坝区' },
+      { value: '九龙坡区', label: '九龙坡区' }, { value: '大渡口区', label: '大渡口区' },
+      { value: '渝北区', label: '渝北区' }, { value: '巴南区', label: '巴南区' },
+      { value: '北碚区', label: '北碚区' }, { value: '涪陵区', label: '涪陵区' },
+      { value: '万州区', label: '万州区' }, { value: '黔江区', label: '黔江区' },
+      { value: '长寿区', label: '长寿区' }, { value: '江津区', label: '江津区' },
+      { value: '合川区', label: '合川区' }, { value: '永川区', label: '永川区' },
+    ]}
+  ]},
+  { value: '河北省', label: '河北省', children: [
+    { value: '石家庄市', label: '石家庄市', children: [
+      { value: '长安区', label: '长安区' }, { value: '桥西区', label: '桥西区' },
+      { value: '新华区', label: '新华区' }, { value: '裕华区', label: '裕华区' },
+    ]},
+    { value: '唐山市', label: '唐山市', children: [
+      { value: '路北区', label: '路北区' }, { value: '路南区', label: '路南区' },
+    ]},
+    { value: '保定市', label: '保定市', children: [
+      { value: '竞秀区', label: '竞秀区' }, { value: '莲池区', label: '莲池区' },
+    ]},
+  ]},
+  { value: '山西省', label: '山西省', children: [
+    { value: '太原市', label: '太原市', children: [
+      { value: '小店区', label: '小店区' }, { value: '迎泽区', label: '迎泽区' },
+      { value: '杏花岭区', label: '杏花岭区' }, { value: '尖草坪区', label: '尖草坪区' },
+      { value: '万柏林区', label: '万柏林区' }, { value: '晋源区', label: '晋源区' },
+    ]},
+  ]},
+  { value: '辽宁省', label: '辽宁省', children: [
+    { value: '沈阳市', label: '沈阳市', children: [
+      { value: '和平区', label: '和平区' }, { value: '沈河区', label: '沈河区' },
+      { value: '皇姑区', label: '皇姑区' }, { value: '铁西区', label: '铁西区' },
+    ]},
+    { value: '大连市', label: '大连市', children: [
+      { value: '中山区', label: '中山区' }, { value: '西岗区', label: '西岗区' },
+      { value: '沙河口区', label: '沙河口区' }, { value: '甘井子区', label: '甘井子区' },
+    ]},
+  ]},
+  { value: '吉林省', label: '吉林省', children: [
+    { value: '长春市', label: '长春市', children: [
+      { value: '南关区', label: '南关区' }, { value: '朝阳区', label: '朝阳区' },
+      { value: '绿园区', label: '绿园区' }, { value: '二道区', label: '二道区' },
+    ]},
+  ]},
+  { value: '黑龙江省', label: '黑龙江省', children: [
+    { value: '哈尔滨市', label: '哈尔滨市', children: [
+      { value: '道里区', label: '道里区' }, { value: '南岗区', label: '南岗区' },
+      { value: '道外区', label: '道外区' }, { value: '香坊区', label: '香坊区' },
+    ]},
+  ]},
+  { value: '江苏省', label: '江苏省', children: [
+    { value: '南京市', label: '南京市', children: [
+      { value: '玄武区', label: '玄武区' }, { value: '秦淮区', label: '秦淮区' },
+      { value: '建邺区', label: '建邺区' }, { value: '鼓楼区', label: '鼓楼区' },
+    ]},
+    { value: '苏州市', label: '苏州市', children: [
+      { value: '姑苏区', label: '姑苏区' }, { value: '吴中区', label: '吴中区' },
+      { value: '相城区', label: '相城区' }, { value: '虎丘区', label: '虎丘区' },
+    ]},
+    { value: '无锡市', label: '无锡市', children: [
+      { value: '梁溪区', label: '梁溪区' }, { value: '锡山区', label: '锡山区' },
+    ]},
+  ]},
+  { value: '浙江省', label: '浙江省', children: [
+    { value: '杭州市', label: '杭州市', children: [
+      { value: '上城区', label: '上城区' }, { value: '拱墅区', label: '拱墅区' },
+      { value: '西湖区', label: '西湖区' }, { value: '滨江区', label: '滨江区' },
+    ]},
+    { value: '宁波市', label: '宁波市', children: [
+      { value: '海曙区', label: '海曙区' }, { value: '江北区', label: '江北区' },
+    ]},
+    { value: '温州市', label: '温州市', children: [
+      { value: '鹿城区', label: '鹿城区' }, { value: '龙湾区', label: '龙湾区' },
+    ]},
+  ]},
+  { value: '安徽省', label: '安徽省', children: [
+    { value: '合肥市', label: '合肥市', children: [
+      { value: '瑶海区', label: '瑶海区' }, { value: '庐阳区', label: '庐阳区' },
+      { value: '蜀山区', label: '蜀山区' }, { value: '包河区', label: '包河区' },
+    ]},
+  ]},
+  { value: '福建省', label: '福建省', children: [
+    { value: '福州市', label: '福州市', children: [
+      { value: '鼓楼区', label: '鼓楼区' }, { value: '台江区', label: '台江区' },
+      { value: '仓山区', label: '仓山区' }, { value: '晋安区', label: '晋安区' },
+    ]},
+    { value: '厦门市', label: '厦门市', children: [
+      { value: '思明区', label: '思明区' }, { value: '湖里区', label: '湖里区' },
+    ]},
+  ]},
+  { value: '江西省', label: '江西省', children: [
+    { value: '南昌市', label: '南昌市', children: [
+      { value: '东湖区', label: '东湖区' }, { value: '西湖区', label: '西湖区' },
+      { value: '青云谱区', label: '青云谱区' }, { value: '青山湖区', label: '青山湖区' },
+    ]},
+  ]},
+  { value: '山东省', label: '山东省', children: [
+    { value: '济南市', label: '济南市', children: [
+      { value: '历下区', label: '历下区' }, { value: '市中区', label: '市中区' },
+      { value: '槐荫区', label: '槐荫区' }, { value: '天桥区', label: '天桥区' },
+    ]},
+    { value: '青岛市', label: '青岛市', children: [
+      { value: '市南区', label: '市南区' }, { value: '市北区', label: '市北区' },
+      { value: '李沧区', label: '李沧区' }, { value: '崂山区', label: '崂山区' },
+    ]},
+  ]},
+  { value: '河南省', label: '河南省', children: [
+    { value: '郑州市', label: '郑州市', children: [
+      { value: '中原区', label: '中原区' }, { value: '二七区', label: '二七区' },
+      { value: '金水区', label: '金水区' }, { value: '惠济区', label: '惠济区' },
+    ]},
+  ]},
+  { value: '湖北省', label: '湖北省', children: [
+    { value: '武汉市', label: '武汉市', children: [
+      { value: '江岸区', label: '江岸区' }, { value: '江汉区', label: '江汉区' },
+      { value: '硚口区', label: '硚口区' }, { value: '汉阳区', label: '汉阳区' },
+      { value: '武昌区', label: '武昌区' }, { value: '洪山区', label: '洪山区' },
+    ]},
+  ]},
+  { value: '湖南省', label: '湖南省', children: [
+    { value: '长沙市', label: '长沙市', children: [
+      { value: '芙蓉区', label: '芙蓉区' }, { value: '天心区', label: '天心区' },
+      { value: '岳麓区', label: '岳麓区' }, { value: '开福区', label: '开福区' },
+      { value: '雨花区', label: '雨花区' }, { value: '望城区', label: '望城区' },
+    ]},
+  ]},
+  { value: '广东省', label: '广东省', children: [
+    { value: '广州市', label: '广州市', children: [
+      { value: '越秀区', label: '越秀区' }, { value: '海珠区', label: '海珠区' },
+      { value: '荔湾区', label: '荔湾区' }, { value: '天河区', label: '天河区' },
+      { value: '白云区', label: '白云区' }, { value: '黄埔区', label: '黄埔区' },
+    ]},
+    { value: '深圳市', label: '深圳市', children: [
+      { value: '罗湖区', label: '罗湖区' }, { value: '福田区', label: '福田区' },
+      { value: '南山区', label: '南山区' }, { value: '宝安区', label: '宝安区' },
+      { value: '龙岗区', label: '龙岗区' }, { value: '龙华区', label: '龙华区' },
+    ]},
+    { value: '东莞市', label: '东莞市', children: [
+      { value: '莞城区', label: '莞城区' }, { value: '南城区', label: '南城区' },
+    ]},
+    { value: '佛山市', label: '佛山市', children: [
+      { value: '禅城区', label: '禅城区' }, { value: '南海区', label: '南海区' },
+      { value: '顺德区', label: '顺德区' }, { value: '三水区', label: '三水区' },
+    ]},
+  ]},
+  { value: '四川省', label: '四川省', children: [
+    { value: '成都市', label: '成都市', children: [
+      { value: '锦江区', label: '锦江区' }, { value: '青羊区', label: '青羊区' },
+      { value: '金牛区', label: '金牛区' }, { value: '武侯区', label: '武侯区' },
+      { value: '成华区', label: '成华区' }, { value: '高新区', label: '高新区' },
+    ]},
+  ]},
+  { value: '贵州省', label: '贵州省', children: [
+    { value: '贵阳市', label: '贵阳市', children: [
+      { value: '南明区', label: '南明区' }, { value: '云岩区', label: '云岩区' },
+      { value: '花溪区', label: '花溪区' }, { value: '观山湖区', label: '观山湖区' },
+    ]},
+  ]},
+  { value: '云南省', label: '云南省', children: [
+    { value: '昆明市', label: '昆明市', children: [
+      { value: '五华区', label: '五华区' }, { value: '盘龙区', label: '盘龙区' },
+      { value: '官渡区', label: '官渡区' }, { value: '西山区', label: '西山区' },
+    ]},
+  ]},
+  { value: '陕西省', label: '陕西省', children: [
+    { value: '西安市', label: '西安市', children: [
+      { value: '未央区', label: '未央区' }, { value: '新城区', label: '新城区' },
+      { value: '碑林区', label: '碑林区' }, { value: '莲湖区', label: '莲湖区' },
+      { value: '雁塔区', label: '雁塔区' }, { value: '长安区', label: '长安区' },
+    ]},
+  ]},
+  { value: '甘肃省', label: '甘肃省', children: [
+    { value: '兰州市', label: '兰州市', children: [
+      { value: '城关区', label: '城关区' }, { value: '七里河区', label: '七里河区' },
+      { value: '西固区', label: '西固区' }, { value: '安宁区', label: '安宁区' },
+    ]},
+  ]},
+  { value: '青海省', label: '青海省', children: [
+    { value: '西宁市', label: '西宁市', children: [
+      { value: '城东区', label: '城东区' }, { value: '城中区', label: '城中区' },
+      { value: '城西区', label: '城西区' }, { value: '城北区', label: '城北区' },
+    ]},
+  ]},
+  { value: '内蒙古', label: '内蒙古', children: [
+    { value: '呼和浩特市', label: '呼和浩特市', children: [
+      { value: '新城区', label: '新城区' }, { value: '回民区', label: '回民区' },
+      { value: '玉泉区', label: '玉泉区' }, { value: '赛罕区', label: '赛罕区' },
+    ]},
+  ]},
+  { value: '广西', label: '广西', children: [
+    { value: '南宁市', label: '南宁市', children: [
+      { value: '青秀区', label: '青秀区' }, { value: '兴宁区', label: '兴宁区' },
+      { value: '江南区', label: '江南区' }, { value: '西乡塘区', label: '西乡塘区' },
+    ]},
+  ]},
+  { value: '西藏', label: '西藏', children: [
+    { value: '拉萨市', label: '拉萨市', children: [
+      { value: '城关区', label: '城关区' }, { value: '堆龙德庆区', label: '堆龙德庆区' },
+    ]},
+  ]},
+  { value: '宁夏', label: '宁夏', children: [
+    { value: '银川市', label: '银川市', children: [
+      { value: '兴庆区', label: '兴庆区' }, { value: '西夏区', label: '西夏区' },
+      { value: '金凤区', label: '金凤区' }, { value: '灵武市', label: '灵武市' },
+    ]},
+  ]},
+  { value: '新疆', label: '新疆', children: [
+    { value: '乌鲁木齐市', label: '乌鲁木齐市', children: [
+      { value: '天山区', label: '天山区' }, { value: '沙依巴克区', label: '沙依巴克区' },
+      { value: '新市区', label: '新市区' }, { value: '水磨沟区', label: '水磨沟区' },
+    ]},
+  ]},
+  { value: '海南省', label: '海南省', children: [
+    { value: '海口市', label: '海口市', children: [
+      { value: '秀英区', label: '秀英区' }, { value: '龙华区', label: '龙华区' },
+      { value: '琼山区', label: '琼山区' }, { value: '美兰区', label: '美兰区' },
+    ]},
+    { value: '三亚市', label: '三亚市', children: [
+      { value: '吉阳区', label: '吉阳区' }, { value: '天涯区', label: '天涯区' },
+    ]},
+  ]},
+]
 
 // ============ API 接口 ============
 // =========================================
+
+// 物业管理员角色ID
+const ADMIN_ROLE_ID = 2
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -30,6 +305,15 @@ const pagination = reactive({
 
 const tableData = ref<any[]>([])
 
+// 负责人下拉列表
+interface ManagerOption {
+  id: number
+  fullName: string
+  phoneNumber?: string
+}
+
+const managerList = ref<ManagerOption[]>([])
+
 const form = reactive({
   id: null as number | null,
   communityCode: '',
@@ -38,14 +322,53 @@ const form = reactive({
   province: '',
   city: '',
   district: '',
+  regionSelected: [] as string[], // 级联选择器的值
   totalBuildings: 0,
   totalUnits: 0,
   propertyCompany: '',
+  managerId: null as number | null,
   managerName: '',
   managerPhone: '',
   status: 1,
   remark: ''
 })
+
+// 加载物业管理员列表
+const loadManagerList = async () => {
+  try {
+    const res = await getUsersByRole(ADMIN_ROLE_ID)
+    managerList.value = (res.data || []).map((u: any) => ({
+      id: u.id,
+      fullName: u.fullName,
+      phoneNumber: u.phoneNumber,
+    }))
+  } catch (error) {
+    console.error('加载物业管理员列表失败', error)
+  }
+}
+
+// 级联选择器值变化时，自动更新 province/city/district
+watch(() => form.regionSelected, (val) => {
+  if (val && val.length >= 3) {
+    form.province = val[0]
+    form.city = val[1]
+    form.district = val[2]
+  }
+})
+
+// 选择负责人时，自动填充姓名和电话
+const handleManagerChange = (managerId: number | null) => {
+  if (managerId) {
+    const manager = managerList.value.find(m => m.id === managerId)
+    if (manager) {
+      form.managerName = manager.fullName
+      form.managerPhone = manager.phoneNumber || ''
+    }
+  } else {
+    form.managerName = ''
+    form.managerPhone = ''
+  }
+}
 
 const loadData = async () => {
   loading.value = true
@@ -89,15 +412,26 @@ const handleAdd = () => {
   isEdit.value = false
   dialogTitle.value = '新增小区'
   resetForm()
+  loadManagerList()
   dialogVisible.value = true
 }
 
 const handleEdit = async (row: any) => {
   isEdit.value = true
   dialogTitle.value = '编辑小区'
+  loadManagerList()
   try {
     const res = await getCommunity(row.id)
-    Object.assign(form, res.data)
+    const data = res.data
+    Object.assign(form, data)
+    // 设置级联选择器的值
+    if (data.province && data.city && data.district) {
+      form.regionSelected = [data.province, data.city, data.district]
+    } else {
+      form.regionSelected = []
+    }
+    // 如果后端返回了managerId，设置到form中
+    form.managerId = (data as any).managerId || null
     dialogVisible.value = true
   } catch (error) {
     ElMessage.error('加载小区信息失败')
@@ -123,10 +457,18 @@ const handleDelete = (row: any) => {
 const handleSubmit = async () => {
   try {
     if (isEdit.value) {
-      await updateCommunity(form as CommunityUpdate)
+      const updateData: any = { ...form }
+      if (updateData.managerId) {
+        updateData.managerId = updateData.managerId
+      }
+      await updateCommunity(updateData as CommunityUpdate)
       ElMessage.success('更新成功')
     } else {
-      await saveCommunity(form as CommunitySave)
+      const saveData: any = { ...form }
+      if (saveData.managerId) {
+        saveData.managerId = saveData.managerId
+      }
+      await saveCommunity(saveData as CommunitySave)
       ElMessage.success('新增成功')
     }
     dialogVisible.value = false
@@ -144,9 +486,11 @@ const resetForm = () => {
   form.province = ''
   form.city = ''
   form.district = ''
+  form.regionSelected = []
   form.totalBuildings = 0
   form.totalUnits = 0
   form.propertyCompany = ''
+  form.managerId = null
   form.managerName = ''
   form.managerPhone = ''
   form.status = 1
@@ -286,17 +630,16 @@ onMounted(() => {
               <label class="form-label">地址</label>
               <input v-model="form.address" class="form-input" placeholder="请输入详细地址" />
             </div>
-            <div class="form-field">
-              <label class="form-label">省份</label>
-              <input v-model="form.province" class="form-input" placeholder="请输入省份" />
-            </div>
-            <div class="form-field">
-              <label class="form-label">城市</label>
-              <input v-model="form.city" class="form-input" placeholder="请输入城市" />
-            </div>
-            <div class="form-field">
-              <label class="form-label">区域</label>
-              <input v-model="form.district" class="form-input" placeholder="请输入区域" />
+            <div class="form-field full-width">
+              <label class="form-label">省/市/区</label>
+              <el-cascader
+                v-model="form.regionSelected"
+                :options="regionData"
+                :props="{ checkStrictly: false }"
+                placeholder="请选择省/市/区"
+                clearable
+                class="form-cascader"
+              />
             </div>
             <div class="form-field">
               <label class="form-label">楼栋数</label>
@@ -312,11 +655,24 @@ onMounted(() => {
             </div>
             <div class="form-field">
               <label class="form-label">负责人</label>
-              <input v-model="form.managerName" class="form-input" placeholder="请输入负责人" />
+              <el-select
+                v-model="form.managerId"
+                placeholder="请选择物业管理员"
+                clearable
+                @change="handleManagerChange"
+                class="form-select"
+              >
+                <el-option
+                  v-for="m in managerList"
+                  :key="m.id"
+                  :label="m.fullName"
+                  :value="m.id"
+                />
+              </el-select>
             </div>
             <div class="form-field">
               <label class="form-label">负责人电话</label>
-              <input v-model="form.managerPhone" class="form-input" placeholder="请输入负责人电话" />
+              <input v-model="form.managerPhone" class="form-input" placeholder="自动填充" readonly />
             </div>
             <div class="form-field">
               <label class="form-label">状态</label>
@@ -814,6 +1170,49 @@ textarea.form-input {
   content: '*';
   color: #dc2626;
   margin-left: 2px;
+}
+
+/* ===== 级联选择器和下拉框 ===== */
+.form-cascader {
+  width: 100%;
+}
+
+.form-select {
+  width: 100%;
+}
+
+.form-select :deep(.el-input__wrapper) {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-select :deep(.el-input__wrapper:hover) {
+  border-color: #cbd5e1;
+}
+
+.form-select :deep(.el-input__wrapper.is-focus) {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-cascader :deep(.el-input__wrapper) {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-cascader :deep(.el-input__wrapper:hover) {
+  border-color: #cbd5e1;
+}
+
+.form-cascader :deep(.el-input__wrapper.is-focus) {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .text-muted {

@@ -24,7 +24,11 @@
         FROM complaint_suggestion c
         LEFT JOIN owner_info o ON c.owner_id = o.id AND o.is_deleted = 0
         LEFT JOIN house_info h ON c.house_id = h.id AND h.is_deleted = 0
+        LEFT JOIN building_info b ON h.building_id = b.id AND b.is_deleted = 0
         WHERE c.is_deleted = 0
+        <if test="communityId != null">
+            AND b.community_id = #{communityId}
+        </if>
         <if test="complaintNo != null and complaintNo != ''">
             AND c.complaint_no LIKE CONCAT('%', #{complaintNo}, '%')
         </if>

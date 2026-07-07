@@ -35,6 +35,21 @@ const fmtMoney = (v?: number) => {
   return '¥' + Number(v).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+// 投诉类型颜色映射
+const complaintColors = ['#ec4899', '#f97316', '#3b82f6', '#8b5cf6', '#14b8a6', '#f59e0b', '#ef4444', '#22c55e']
+const getComplaintColor = (type: string) => {
+  const keys = stats.value?.complaintTypeDistribution ? Object.keys(stats.value.complaintTypeDistribution) : []
+  const idx = keys.indexOf(type)
+  return complaintColors[idx % complaintColors.length]
+}
+
+// 账单状态颜色映射
+const getBillStatusColor = (status: string) => {
+  if (status === '已缴费') return '#22c55e'
+  if (status === '已逾期') return '#ef4444'
+  return '#f59e0b'
+}
+
 // 统计卡片配置
 interface StatCard {
   label: string
@@ -83,16 +98,7 @@ const financeCards: StatCard[] = [
         <h1 class="dashboard__title">欢迎回来，{{ userStore.userInfo?.fullName || '管理员' }}</h1>
         <p class="dashboard__desc">智慧物业管理系统数据看板，实时查看各模块运营数据</p>
       </div>
-      <div class="dashboard__hero-stats">
-        <div class="dashboard__hero-stat">
-          <span class="dashboard__hero-stat-value">{{ stats?.totalUsers ?? '-' }}</span>
-          <span class="dashboard__hero-stat-label">系统用户</span>
-        </div>
-        <div class="dashboard__hero-stat">
-          <span class="dashboard__hero-stat-value">{{ stats?.totalRoles ?? '-' }}</span>
-          <span class="dashboard__hero-stat-label">系统角色</span>
-        </div>
-      </div>
+
     </section>
 
     <!-- 加载状态 -->
@@ -194,6 +200,19 @@ const financeCards: StatCard[] = [
           class="dashboard__distribution"
         >
           <h4 class="dashboard__dist-title">投诉类型分布</h4>
+          <div class="dashboard__dist-legend">
+            <span
+              v-for="(_count, type) in stats.complaintTypeDistribution"
+              :key="type"
+              class="dashboard__dist-legend-item"
+            >
+              <span
+                class="dashboard__dist-legend-dot"
+                :style="{ background: getComplaintColor(type) }"
+              ></span>
+              <span class="dashboard__dist-legend-text">{{ type }}</span>
+            </span>
+          </div>
           <div class="dashboard__dist-bars">
             <div
               v-for="(count, type) in stats.complaintTypeDistribution"
@@ -206,7 +225,7 @@ const financeCards: StatCard[] = [
                   class="dashboard__dist-bar"
                   :style="{
                     width: Math.max(8, (Number(count) / Math.max(...Object.values(stats!.complaintTypeDistribution), 1)) * 100) + '%',
-                    background: '#ec4899',
+                    background: getComplaintColor(type),
                   }"
                 ></div>
               </div>
@@ -260,6 +279,19 @@ const financeCards: StatCard[] = [
           class="dashboard__distribution"
         >
           <h4 class="dashboard__dist-title">账单状态分布</h4>
+          <div class="dashboard__dist-legend">
+            <span
+              v-for="(_count, status) in stats.billStatusDistribution"
+              :key="status"
+              class="dashboard__dist-legend-item"
+            >
+              <span
+                class="dashboard__dist-legend-dot"
+                :style="{ background: getBillStatusColor(status) }"
+              ></span>
+              <span class="dashboard__dist-legend-text">{{ status }}</span>
+            </span>
+          </div>
           <div class="dashboard__dist-bars">
             <div
               v-for="(count, status) in stats.billStatusDistribution"
@@ -272,7 +304,7 @@ const financeCards: StatCard[] = [
                   class="dashboard__dist-bar"
                   :style="{
                     width: Math.max(8, (Number(count) / Math.max(...Object.values(stats!.billStatusDistribution), 1)) * 100) + '%',
-                    background: status === '已缴费' ? '#22c55e' : status === '已逾期' ? '#ef4444' : '#f59e0b',
+                    background: getBillStatusColor(status),
                   }"
                 ></div>
               </div>
@@ -326,29 +358,6 @@ const financeCards: StatCard[] = [
   margin: 0;
   opacity: 0.8;
   font-size: 14px;
-}
-
-.dashboard__hero-stats {
-  display: flex;
-  gap: 32px;
-  flex-shrink: 0;
-}
-
-.dashboard__hero-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.dashboard__hero-stat-value {
-  font-size: 32px;
-  font-weight: 800;
-}
-
-.dashboard__hero-stat-label {
-  font-size: 13px;
-  opacity: 0.75;
 }
 
 /* ===== 加载状态 ===== */
@@ -573,20 +582,38 @@ const financeCards: StatCard[] = [
   text-align: right;
 }
 
+/* ===== 分布图图例 ===== */
+.dashboard__dist-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.dashboard__dist-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard__dist-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dashboard__dist-legend-text {
+  font-size: 12px;
+  color: #64748b;
+}
+
 /* ===== 响应式 ===== */
 @media (max-width: 768px) {
   .dashboard__hero {
     flex-direction: column;
     align-items: flex-start;
     padding: 20px;
-  }
-
-  .dashboard__hero-stats {
-    gap: 20px;
-  }
-
-  .dashboard__hero-stat-value {
-    font-size: 24px;
   }
 
   .dashboard__cards {

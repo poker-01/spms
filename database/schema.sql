@@ -85,6 +85,7 @@ create table community_info
     total_buildings  int      default 0                 null comment '总楼栋数',
     total_units      int      default 0                 null comment '总户数',
     property_company varchar(128)                       null comment '物业公司',
+    manager_id       bigint                             null comment '负责人用户ID',
     manager_name     varchar(64)                        null comment '负责人姓名',
     manager_phone    varchar(16)                        null comment '负责人电话',
     status           tinyint  default 1                 null comment '状态: 0-停用 1-启用',

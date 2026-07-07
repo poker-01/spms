@@ -82,7 +82,10 @@ public class FinanceController {
     @Operation(summary = "分页查询账单")
     @GetMapping("/bills/page")
     @PreAuthorize("hasAuthority('finance:bill:query')")
-    public Result<Page<BillVO>> pageBills(BillQueryRequest request) {
+    public Result<Page<BillVO>> pageBills(@AuthenticationPrincipal LoginUser loginUser,
+                                          BillQueryRequest request) {
+        // 小区管理员数据隔离：非超级管理员只能查看本小区账单
+        request.setCommunityId(com.example.spms.common.CommunityFilterHelper.getCommunityId(loginUser));
         return Result.success(billInfoService.pageBills(request));
     }
 
@@ -101,14 +104,16 @@ public class FinanceController {
         return Result.success();
     }
 
-    @Operation(summary = "一键生成月度账单（为所有业主自动生成当月账单）")
+    @Operation(summary = "一键生成月度账单（为当前小区所有业主自动生成当月账单）")
     @PostMapping("/bills/auto-generate")
     @PreAuthorize("hasAuthority('finance:bill:generate')")
-    public Result<Integer> autoGenerateMonthlyBills(@RequestParam(required = false) String billPeriod) {
+    public Result<Integer> autoGenerateMonthlyBills(@AuthenticationPrincipal LoginUser loginUser,
+                                                    @RequestParam(required = false) String billPeriod) {
         if (billPeriod == null || billPeriod.isBlank()) {
             billPeriod = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
         }
-        int count = billInfoService.autoGenerateMonthlyBills(billPeriod);
+        Long communityId = com.example.spms.common.CommunityFilterHelper.getCommunityId(loginUser);
+        int count = billInfoService.autoGenerateMonthlyBills(billPeriod, communityId);
         return Result.success(count);
     }
 
@@ -132,15 +137,17 @@ public class FinanceController {
     @Operation(summary = "统计各状态账单数量")
     @GetMapping("/bills/stats/status")
     @PreAuthorize("hasAuthority('dashboard:view')")
-    public Result<Object> countBillByStatus() {
-        return Result.success(billInfoService.countByStatus());
+    public Result<Object> countBillByStatus(@AuthenticationPrincipal LoginUser loginUser) {
+        Long communityId = com.example.spms.common.CommunityFilterHelper.getCommunityId(loginUser);
+        return Result.success(billInfoService.countByStatus(communityId));
     }
 
     @Operation(summary = "统计总欠费金额")
     @GetMapping("/bills/stats/overdue")
     @PreAuthorize("hasAuthority('dashboard:view')")
-    public Result<java.math.BigDecimal> sumOverdueAmount() {
-        return Result.success(billInfoService.sumOverdueAmount());
+    public Result<java.math.BigDecimal> sumOverdueAmount(@AuthenticationPrincipal LoginUser loginUser) {
+        Long communityId = com.example.spms.common.CommunityFilterHelper.getCommunityId(loginUser);
+        return Result.success(billInfoService.sumOverdueAmount(communityId));
     }
 
     // ==================== 缴费记录管理 ====================

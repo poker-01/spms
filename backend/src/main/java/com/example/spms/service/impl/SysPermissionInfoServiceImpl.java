@@ -142,6 +142,8 @@ public class SysPermissionInfoServiceImpl extends ServiceImpl<SysPermissionInfoM
                 .filter(p -> Objects.equals(p.getPermissionType(), PERMISSION_TYPE_MENU)
                         || Objects.equals(p.getPermissionType(), PERMISSION_TYPE_PAGE))
                 .filter(p -> p.getVisible() == null || p.getVisible() == 1)
+                // 管理端不显示业主服务菜单
+                .filter(p -> !p.getPermissionCode().startsWith("owner"))
                 .collect(Collectors.groupingBy(p -> p.getParentId() == null ? 0L : p.getParentId()));
         return buildMenuChildren(grouped, parentId);
     }

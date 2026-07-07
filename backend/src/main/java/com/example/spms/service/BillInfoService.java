@@ -46,13 +46,15 @@ public interface BillInfoService extends IService<BillInfo> {
 
     /**
      * 统计各状态账单数量
+     * @param communityId 小区ID，为null时统计全部
      */
-    Object countByStatus();
+    Object countByStatus(Long communityId);
 
     /**
      * 统计总欠费金额
+     * @param communityId 小区ID，为null时统计全部
      */
-    java.math.BigDecimal sumOverdueAmount();
+    java.math.BigDecimal sumOverdueAmount(Long communityId);
 
     /**
      * 获取业主账单列表（业主端）
@@ -60,9 +62,10 @@ public interface BillInfoService extends IService<BillInfo> {
     List<com.example.spms.model.vo.OwnerBillVO> listOwnerBills(Long ownerId);
 
     /**
-     * 自动生成月度账单（为所有业主、所有启用的费用项目生成）
+     * 自动生成月度账单（为指定小区所有业主、所有启用的费用项目生成）
      * @param billPeriod 账单周期，格式如 "2026-07"
+     * @param communityId 小区ID，为null时生成所有小区的账单
      * @return 生成的账单数量
      */
-    int autoGenerateMonthlyBills(String billPeriod);
+    int autoGenerateMonthlyBills(String billPeriod, Long communityId);
 }

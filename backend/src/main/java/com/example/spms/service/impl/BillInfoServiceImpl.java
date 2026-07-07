@@ -24,7 +24,7 @@ import com.example.spms.model.vo.OwnerBillVO;
 import com.example.spms.model.vo.PaymentRecordVO;
 import com.example.spms.service.BillInfoService;
 import com.example.spms.service.FeeItemService;
-import com.example.spms.service.HouseInfoService;
+import com.example.spms.service.HouseService;
 import com.example.spms.service.OwnerHouseRelService;
 import com.example.spms.service.OwnerInfoService;
 import com.example.spms.model.po.HouseInfo;
@@ -61,7 +61,7 @@ public class BillInfoServiceImpl extends ServiceImpl<BillInfoMapper, BillInfo>
     private final FeeItemService feeItemService;
     private final OwnerInfoService ownerInfoService;
     private final OwnerHouseRelService ownerHouseRelService;
-    private final HouseInfoService houseInfoService;
+    private final HouseService houseInfoService;
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -77,7 +77,8 @@ public class BillInfoServiceImpl extends ServiceImpl<BillInfoMapper, BillInfo>
                 request.getStatus(),
                 request.getBillPeriod(),
                 request.getStartTime(),
-                request.getEndTime()
+                request.getEndTime(),
+                request.getCommunityId()
         );
 
         List<BillVO> records = result.getRecords().stream()
@@ -225,8 +226,8 @@ public class BillInfoServiceImpl extends ServiceImpl<BillInfoMapper, BillInfo>
     }
 
     @Override
-    public Object countByStatus() {
-        List<Map<String, Object>> list = billInfoMapper.countByStatus();
+    public Object countByStatus(Long communityId) {
+        List<Map<String, Object>> list = billInfoMapper.countByStatus(communityId);
         return list.stream().collect(Collectors.toMap(
                 m -> {
                     Integer status = (Integer) m.get("status");
@@ -238,8 +239,8 @@ public class BillInfoServiceImpl extends ServiceImpl<BillInfoMapper, BillInfo>
     }
 
     @Override
-    public BigDecimal sumOverdueAmount() {
-        BigDecimal amount = billInfoMapper.sumOverdueAmount();
+    public BigDecimal sumOverdueAmount(Long communityId) {
+        BigDecimal amount = billInfoMapper.sumOverdueAmount(communityId);
         return amount != null ? amount : BigDecimal.ZERO;
     }
 
@@ -264,7 +265,7 @@ public class BillInfoServiceImpl extends ServiceImpl<BillInfoMapper, BillInfo>
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public int autoGenerateMonthlyBills(String billPeriod) {
+    public int autoGenerateMonthlyBills(String billPeriod, Long communityId) {
         // 解析账单周期
         YearMonth yearMonth;
         try {
@@ -273,7 +274,7 @@ public class BillInfoServiceImpl extends ServiceImpl<BillInfoMapper, BillInfo>
             throw new CustomException(ResultCode.FAIL, "账单周期格式错误，应为 yyyy-MM");
         }
 
-        // 获取所有启用的费用项目，排除“按用量”计算的项目（calcMethod=4需要手动抄表）
+        // 获取所有启用的费用项目，排除"按用量"计算的项目（calcMethod=4需要手动抄表）
         List<FeeItem> feeItems = feeItemService.listEnabled().stream()
                 .filter(f -> f.getCalcMethod() != null && f.getCalcMethod() != 4)
                 .collect(Collectors.toList());
@@ -281,31 +282,52 @@ public class BillInfoServiceImpl extends ServiceImpl<BillInfoMapper, BillInfo>
             return 0;
         }
 
-        // 多业主模式：按房屋维度生成账单。获取所有有效关联的房屋（有业主关联的房屋）
+        // 根据小区ID过滤房屋：获取该小区下所有已入住的房屋
+        Set<Long> occupiedHouseIds;
+        if (communityId != null) {
+            // 小区管理员：只获取本小区的房屋
+            List<Long> houseIds = houseInfoService.listAll(communityId).stream()
+                    .map(com.example.spms.model.vo.HouseVO::getId)
+                    .toList();
+            if (houseIds.isEmpty()) {
+                return 0;
+            }
+            // 获取这些房屋中有业主关联的
+            List<OwnerHouseRel> rels = ownerHouseRelService.list(new LambdaQueryWrapper<OwnerHouseRel>()
+                    .in(OwnerHouseRel::getHouseInfoId, houseIds)
+                    .eq(OwnerHouseRel::getIsDeleted, 0));
+            occupiedHouseIds = rels.stream()
+                    .map(OwnerHouseRel::getHouseInfoId)
+                    .collect(Collectors.toSet());
+        } else {
+            // 超级管理员：获取所有小区的房屋
+            List<OwnerHouseRel> allRels = ownerHouseRelService.list(new LambdaQueryWrapper<OwnerHouseRel>()
+                    .eq(OwnerHouseRel::getIsDeleted, 0));
+            occupiedHouseIds = allRels.stream()
+                    .map(OwnerHouseRel::getHouseInfoId)
+                    .collect(Collectors.toSet());
+        }
+
+        if (occupiedHouseIds.isEmpty()) {
+            return 0;
+        }
+
+        // 按房屋取第一个业主作为账单归属人
         List<OwnerHouseRel> allRels = ownerHouseRelService.list(new LambdaQueryWrapper<OwnerHouseRel>()
+                .in(OwnerHouseRel::getHouseInfoId, occupiedHouseIds)
                 .eq(OwnerHouseRel::getIsDeleted, 0));
-        // 按房屋去重，每个房屋取第一个业主作为账单归属人
         Map<Long, Long> houseOwnerMap = allRels.stream()
                 .collect(Collectors.toMap(
                         OwnerHouseRel::getHouseInfoId,
                         OwnerHouseRel::getOwnerInfoId,
                         (existing, replacement) -> existing // 取第一个
                 ));
-        Set<Long> occupiedHouseIds = houseOwnerMap.keySet();
-
-        if (occupiedHouseIds.isEmpty()) {
-            return 0;
-        }
 
         // 批量查询房屋面积信息
         Map<Long, HouseInfo> houseInfoMap = houseInfoService.listByIds(occupiedHouseIds).stream()
                 .collect(Collectors.toMap(HouseInfo::getId, h -> h, (a, b) -> a));
 
-        // 构建费用项目Map，方便查找
-        Map<Long, FeeItem> feeItemMap = feeItems.stream()
-                .collect(Collectors.toMap(FeeItem::getId, f -> f, (a, b) -> a));
-
-        // 查询该周期已存在的账单，避免重复生成（按houseId + feeItemId去重）
+        // 查询该周期已存在的账单，避免重复生成（全局检查：同一个houseId+feeItemId+billPeriod不能重复）
         List<BillInfo> existingBills = list(new LambdaQueryWrapper<BillInfo>()
                 .eq(BillInfo::getBillPeriod, billPeriod)
                 .eq(BillInfo::getIsDeleted, 0));
@@ -313,8 +335,8 @@ public class BillInfoServiceImpl extends ServiceImpl<BillInfoMapper, BillInfo>
                 .map(b -> b.getHouseId() + "_" + b.getFeeItemId())
                 .collect(Collectors.toSet());
 
-        // 截止日期：当月最后一天
-        LocalDate deadline = yearMonth.atEndOfMonth();
+        // 截止日期：下个月最后一天
+        LocalDate deadline = yearMonth.plusMonths(1).atEndOfMonth();
         Date deadlineDate = java.sql.Timestamp.valueOf(deadline.atStartOfDay());
         Date now = new Date();
 

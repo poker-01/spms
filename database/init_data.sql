@@ -29,7 +29,7 @@ INSERT INTO `building_info` (`id`, `community_id`, `building_code`, `building_na
 --
 -- Dumping data for table `community_info`
 --
-INSERT INTO `community_info` (`id`, `community_code`, `community_name`, `address`, `province`, `city`, `district`, `total_buildings`, `total_units`, `property_company`, `manager_name`, `manager_phone`, `status`, `is_deleted`, `version`, `create_time`, `update_time`, `create_user`, `update_user`) VALUES (1,'COMM_001','幸福花园小区','北京市朝阳区幸福路88号','北京市','北京市','朝阳区',12,860,'幸福物业有限公司','张三','13800001111',1,0,0,'2026-07-03 13:45:27','2026-07-03 13:45:27',1,NULL),(2,'COMM_002','阳光城小区','上海市浦东新区阳光大道1号','上海市','上海市','浦东新区',8,520,'阳光物业服务公司','李四','13800002222',1,0,0,'2026-07-03 13:45:27','2026-07-03 13:45:27',1,NULL);
+INSERT INTO `community_info` (`id`, `community_code`, `community_name`, `address`, `province`, `city`, `district`, `total_buildings`, `total_units`, `property_company`, `manager_id`, `manager_name`, `manager_phone`, `status`, `is_deleted`, `version`, `create_time`, `update_time`, `create_user`, `update_user`) VALUES (1,'COMM_001','幸福花园小区','北京市朝阳区幸福路88号','北京市','北京市','朝阳区',12,860,'幸福物业有限公司',NULL,'张三','13800001111',1,0,0,'2026-07-03 13:45:27','2026-07-03 13:45:27',1,NULL),(2,'COMM_002','阳光城小区','上海市浦东新区阳光大道1号','上海市','上海市','浦东新区',8,520,'阳光物业服务公司',NULL,'李四','13800002222',1,0,0,'2026-07-03 13:45:27','2026-07-03 13:45:27',1,NULL);
 
 --
 -- Dumping data for table `complaint_suggestion`
